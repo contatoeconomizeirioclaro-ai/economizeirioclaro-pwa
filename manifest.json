@@ -25,27 +25,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Ofertas",
-      "short_name": "Ofertas",
-      "description": "Veja as melhores ofertas",
-      "url": "https://www.economizeirioclaro.com.br/",
-      "icons": [
-        {
-          "src": "https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "https://www.economizeirioclaro.com.br/screenshot1.png",
-      "sizes": "540x720",
-      "type": "image/png"
-    }
   ]
 }
 
