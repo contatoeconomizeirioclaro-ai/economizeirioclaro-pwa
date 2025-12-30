@@ -4,7 +4,7 @@
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4c430",
+  "background_color": "##ffffff",
   "theme_color": "#f4c430",
   "orientation": "portrait",
   "icons": [
@@ -19,6 +19,11 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "lang": "pt",
+  "display_override": [
+    "standalone",
+    "fullscreen",
+    "window-controls-overlay"
   ]
 }
-
