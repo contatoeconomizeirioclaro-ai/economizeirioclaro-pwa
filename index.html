@@ -4,23 +4,43 @@
   <meta charset="UTF-8" />
   <title>Economizei Rio Claro</title>
 
+  <!-- Viewport -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <!-- PWA -->
   <meta name="theme-color" content="#f4c430" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Economizei Rio Claro" />
 
+  <!-- Manifest -->
   <link rel="manifest" href="/manifest.json" />
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
-    }
-  </script>
-
-  <!-- Redireciona para o conteúdo -->
-  <meta http-equiv="refresh" content="0;url=https://www.economizeirioclaro.com.br" />
+  <!-- iOS Icon -->
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 </head>
+
 <body>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+</script>
+
+<!-- Conteúdo real -->
+<iframe
+  src="https://www.economizeirioclaro.com.br"
+  style="
+    border:0;
+    width:100vw;
+    height:100vh;
+  "
+  allow="fullscreen"
+></iframe>
+
 </body>
 </html>
-
