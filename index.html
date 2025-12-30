@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -9,18 +9,88 @@
 
   <link rel="manifest" href="/manifest.json" />
 
+  <style>
+    body {
+      margin: 0;
+      background: #f4c430;
+      overflow: hidden;
+    }
+
+    #splash {
+      position: fixed;
+      inset: 0;
+      background: #f4c430;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.6s ease;
+    }
+
+    #splash img {
+      width: 120px;
+      animation: drop 1s ease-out forwards;
+    }
+
+    #splash span {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #000;
+      opacity: 0;
+      animation: fadeIn 1s ease forwards;
+      animation-delay: 0.8s;
+    }
+
+    @keyframes drop {
+      from {
+        transform: translateY(-80px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+      }
+    }
+
+    iframe {
+      border: none;
+      width: 100vw;
+      height: 100vh;
+      display: none;
+    }
+  </style>
+
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
     }
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('splash').style.opacity = '0';
+        document.querySelector('iframe').style.display = 'block';
+        setTimeout(() => {
+          document.getElementById('splash').remove();
+        }, 600);
+      }, 1600);
+    });
   </script>
 </head>
 
-<body style="margin:0">
-  <iframe
-    src="https://www.economizeirioclaro.com.br"
-    style="border:0;width:100vw;height:100vh;"
-    allow="fullscreen"
-  ></iframe>
+<body>
+  <div id="splash">
+    <img src="/icons/icon-192.png" alt="Economizei Rio Claro" />
+    <span>Economize com inteligência</span>
+  </div>
+
+  <iframe src="https://www.economizeirioclaro.com.br"></iframe>
 </body>
 </html>
