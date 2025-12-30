@@ -1,12 +1,12 @@
 {
   "name": "Economizei Rio Claro",
   "short_name": "Economizei",
-  "start_url": "/",
+  "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#f4c430",
   "theme_color": "#f4c430",
-  "description": "Economize com ofertas, cupons e dicas em Rio Claro.",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icons/icon-192.png",
