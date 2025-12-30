@@ -1,13 +1,17 @@
 {
+  "id": "https://www.economizeirioclaro.com.br/",
   "name": "Economizei Rio Claro",
   "short_name": "Economizei",
-  "description": "Economize com as melhores ofertas e dicas em Rio Claro",
+  "description": "Economize com as melhores ofertas, cupons e dicas em Rio Claro.",
   "start_url": "https://www.economizeirioclaro.com.br/",
   "scope": "https://www.economizeirioclaro.com.br/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#f4c430",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["shopping", "business", "lifestyle"],
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/icon-192.png",
@@ -21,6 +25,28 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ofertas",
+      "short_name": "Ofertas",
+      "description": "Veja as melhores ofertas",
+      "url": "https://www.economizeirioclaro.com.br/",
+      "icons": [
+        {
+          "src": "https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://www.economizeirioclaro.com.br/screenshot1.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
   ]
 }
+
 
