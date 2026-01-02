@@ -1,7 +1,7 @@
 {
   "name": "Economizei Rio Claro",
-  "short_name": "Economizei Rio Claro",
-  "start_url": "/",
+  "short_name": "Economizei",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -12,7 +12,8 @@
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icons/icon-512.png",
