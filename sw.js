@@ -1,12 +1,10 @@
-const CACHE_NAME = 'economizei-offline-v2'; // 🔥 versão nova para forçar update
+const CACHE_NAME = 'economizei-offline-v3';
 const OFFLINE_URL = '/offline.html';
 const ALLOWED_ORIGIN = self.location.origin;
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll([OFFLINE_URL]);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.add(OFFLINE_URL))
   );
   self.skipWaiting();
 });
@@ -25,20 +23,18 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  const request = event.request;
+  const { request } = event;
   const url = new URL(request.url);
 
-  // ✅ NÃO intercepta outros domínios
+  // ❗ Para outros domínios, deixa o navegador cuidar
   if (url.origin !== ALLOWED_ORIGIN) {
     return;
   }
 
-  // ✅ Apenas navegação de páginas
+  // Apenas páginas (navegação)
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => {
-        return caches.match(OFFLINE_URL);
-      })
+      fetch(request).catch(() => caches.match(OFFLINE_URL))
     );
   }
 });
