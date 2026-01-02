@@ -1,54 +1,72 @@
-// This is the service worker with the combined offline experience (Offline page + Offline copy of pages)
+// Service Worker – Economizei (Offline seguro)
 
-const CACHE = "pwabuilder-offline-page";
+const CACHE_NAME = "economizei-offline-v4";
+const OFFLINE_FALLBACK_PAGE = "/offline.html";
+const ALLOWED_ORIGIN = self.location.origin;
 
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js');
+importScripts("https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js");
 
-// TODO: replace the following with the correct offline fallback page i.e.: const offlineFallbackPage = "offline.html";
-const offlineFallbackPage = "ToDo-replace-this-name.html";
-
-self.addEventListener("message", (event) => {
+// Força atualização do SW
+self.addEventListener("message", event => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });
 
-self.addEventListener('install', async (event) => {
+// Instala e cacheia apenas a página offline
+self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE)
-      .then((cache) => cache.add(offlineFallbackPage))
+    caches.open(CACHE_NAME).then(cache => cache.add(OFFLINE_FALLBACK_PAGE))
   );
+  self.skipWaiting();
 });
 
+// Ativa e limpa caches antigos
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+// Performance (opcional, seguro)
 if (workbox.navigationPreload.isSupported()) {
   workbox.navigationPreload.enable();
 }
 
-workbox.routing.registerRoute(
-  new RegExp('/*'),
-  new workbox.strategies.StaleWhileRevalidate({
-    cacheName: CACHE
-  })
-);
+// ❌ NÃO registrar rota global com Workbox
+// Isso causa conflitos em Cloudflare Pages
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const preloadResp = await event.preloadResponse;
+// Fetch controlado: somente navegação e somente no próprio domínio
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  const url = new URL(request.url);
 
-        if (preloadResp) {
-          return preloadResp;
+  // Nunca interceptar outros domínios
+  if (url.origin !== ALLOWED_ORIGIN) {
+    return;
+  }
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const preloadResp = await event.preloadResponse;
+          if (preloadResp) return preloadResp;
+
+          return await fetch(request);
+        } catch (err) {
+          const cache = await caches.open(CACHE_NAME);
+          return await cache.match(OFFLINE_FALLBACK_PAGE);
         }
-
-        const networkResp = await fetch(event.request);
-        return networkResp;
-      } catch (error) {
-
-        const cache = await caches.open(CACHE);
-        const cachedResp = await cache.match(offlineFallbackPage);
-        return cachedResp;
-      }
-    })());
+      })()
+    );
   }
 });
+
