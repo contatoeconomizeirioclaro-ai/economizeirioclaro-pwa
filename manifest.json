@@ -1,4 +1,5 @@
 {
+  "id": "/?source=pwa",
   "name": "Economizei Rio Claro",
   "short_name": "Economizei",
   "start_url": "/?source=pwa",
@@ -12,8 +13,7 @@
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/icons/icon-512.png",
@@ -23,3 +23,4 @@
     }
   ]
 }
+
