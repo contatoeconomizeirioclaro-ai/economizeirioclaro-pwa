@@ -2,13 +2,16 @@
   "id": "/?source=pwa",
   "name": "Economizei Rio Claro",
   "short_name": "Economizei",
+  "description": "Economizei Rio Claro - ofertas, promoções e economia local.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#ffffff",
   "theme_color": "#f4c430",
   "orientation": "portrait",
   "lang": "pt-BR",
+  "categories": ["shopping", "business", "lifestyle"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -21,6 +24,12 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
   ]
 }
-
