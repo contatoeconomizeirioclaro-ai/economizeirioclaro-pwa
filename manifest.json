@@ -1,8 +1,8 @@
 {
   "id": "/?source=pwa",
   "name": "Economizei Rio Claro",
-  "short_name": "Economizei",
-  "description": "Economizei Rio Claro - ofertas, promoções e economia local.",
+  "short_name": "Economizei!Rio Claro",
+  "description": "Economizei Rio Claro - Tudo que você procura em Rio Claro/RJ está aqui.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
