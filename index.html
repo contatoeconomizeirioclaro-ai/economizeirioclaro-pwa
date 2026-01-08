@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <title>Economizei Rio Claro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  
+
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#f4c430">
   
-  <!-- CSS da Splash -->
+  <!-- CSS da Splash Screen Refinada -->
   <link rel="stylesheet" href="/splash.css">
-  
+
   <style>
-    /* Seus estilos atuais */
+    /* Estilos principais do wrapper */
     html, body {
       margin: 0;
       padding: 0;
@@ -21,45 +21,86 @@
       overflow: hidden;
       background: #ffffff;
     }
+    
+    /* Iframe - escondido inicialmente */
     iframe {
       border: none;
       width: 100%;
       height: 100%;
+      display: none; /* Escondido até splash terminar */
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
-    /* Esconde tudo inicialmente */
+    
+    /* Quando splash terminar, mostrar iframe */
+    body.splash-complete iframe {
+      display: block;
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    /* Estado inicial - garantir que tudo esteja escondido */
     body:not(.splash-complete) > iframe {
-      display: none;
+      display: none !important;
     }
   </style>
 </head>
 <body>
-  <!-- Splash Screen (visível apenas no app) -->
+
+  <!-- Splash Screen Refinada -->
+  <!-- Aparece apenas no app instalado -->
   <div id="splash-screen">
     <div class="splash-container">
-      <img id="splash-pin" src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png" 
-           alt="Ícone Economizei" class="pin-animation">
-      <img id="splash-text" src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png" 
-           alt="Economizei Rio Claro" class="text-animation">
+      <!-- PIN aumentado para 150px -->
+      <img id="splash-pin" 
+           src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png" 
+           alt="Ícone Economizei"
+           width="150"
+           height="150">
+      
+      <!-- TEXTO mantido 250px -->
+      <!-- Espaço de 5px entre pin e texto -->
+      <img id="splash-text" 
+           src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png" 
+           alt="Economizei Rio Claro"
+           width="250"
+           height="90">
     </div>
   </div>
 
-  <!-- Seu iframe atual -->
+  <!-- Seu site Blogger no iframe -->
   <iframe
     src="https://www.economizeirioclaro.com.br/?app=1"
     loading="eager"
-    referrerpolicy="no-referrer-when-downgrade">
+    referrerpolicy="no-referrer-when-downgrade"
+    allow="fullscreen"
+    title="Economizei Rio Claro - Ofertas e Promoções">
   </iframe>
 
   <script>
-    // Service Worker atual
+    // Registrar Service Worker (seu código atual)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('✅ Service Worker registrado:', registration.scope);
+          })
+          .catch(error => {
+            console.log('❌ Falha no Service Worker:', error);
+          });
       });
     }
+    
+    // Verificar se já está rodando como app
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('📱 Economizei rodando como app instalado');
+      document.documentElement.setAttribute('data-app-mode', 'installed');
+    }
   </script>
-  
-  <!-- Script da Splash -->
+
+  <!-- Script da Splash Screen Refinada -->
   <script src="/splash.js"></script>
+
 </body>
 </html>
