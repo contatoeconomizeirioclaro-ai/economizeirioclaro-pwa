@@ -32,14 +32,14 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Configuração de tempos (em milissegundos)
   const TIMING = {
-    PIN_FADE_IN: 400,      // 0.4s
-    PAUSE_AFTER_PIN: 300,  // 0.3s
+    PIN_FADE_IN: 400,      // 0.7s
+    PAUSE_AFTER_PIN: 300,  // 0.5s
     TEXT_SLIDE_IN: 500,    // 0.5s
-    DISPLAY_BOTH: 1000,    // 1.0s
+    DISPLAY_BOTH: 1000,    // 3.0s
     FADE_OUT: 400          // 0.4s
   };
   
-  // Tempo total: 0.4 + 0.3 + 0.5 + 1.0 + 0.4 = 2.6 segundos
+  // Tempo total: 0.7 + 0.5 + 0.5 + 3.0 + 0.4 = 5.1 segundos
   const TOTAL_DURATION = 
     TIMING.PIN_FADE_IN + 
     TIMING.PAUSE_AFTER_PIN + 
