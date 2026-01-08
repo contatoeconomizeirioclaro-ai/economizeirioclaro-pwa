@@ -2,15 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-
   <title>Economizei Rio Claro</title>
-
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-
+  
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#f4c430">
-
+  
+  <!-- CSS da Splash -->
+  <link rel="stylesheet" href="/splash.css">
+  
   <style>
+    /* Seus estilos atuais */
     html, body {
       margin: 0;
       padding: 0;
@@ -24,23 +26,40 @@
       width: 100%;
       height: 100%;
     }
+    /* Esconde tudo inicialmente */
+    body:not(.splash-complete) > iframe {
+      display: none;
+    }
   </style>
 </head>
 <body>
+  <!-- Splash Screen (visível apenas no app) -->
+  <div id="splash-screen">
+    <div class="splash-container">
+      <img id="splash-pin" src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png" 
+           alt="Ícone Economizei" class="pin-animation">
+      <img id="splash-text" src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png" 
+           alt="Economizei Rio Claro" class="text-animation">
+    </div>
+  </div>
 
- <iframe
-  src="https://www.economizeirioclaro.com.br/?app=1"
-  loading="eager"
-  referrerpolicy="no-referrer-when-downgrade">
-</iframe>
+  <!-- Seu iframe atual -->
+  <iframe
+    src="https://www.economizeirioclaro.com.br/?app=1"
+    loading="eager"
+    referrerpolicy="no-referrer-when-downgrade">
+  </iframe>
 
   <script>
+    // Service Worker atual
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js');
       });
     }
   </script>
-
+  
+  <!-- Script da Splash -->
+  <script src="/splash.js"></script>
 </body>
 </html>
