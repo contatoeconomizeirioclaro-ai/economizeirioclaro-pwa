@@ -1,116 +1,97 @@
-/* splash.css - VERSÃO REFINADA */
-#splash-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #FFFFFF;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  opacity: 1;
-  transition: opacity 0.4s ease;
-}
-
-body.splash-complete #splash-screen {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
-}
-
-.splash-container {
-  text-align: center;
-  width: 100%;
-  max-width: 300px;
-  padding: 20px;
-}
-
-/* PIN aumentado para 150px */
-#splash-pin {
-  width: 150px;
-  height: 150px;
-  margin: 0 auto 5px; /* Espaço de 5px abaixo */
-  display: block;
-  opacity: 0;
-  transform: scale(0.9);
-  animation: pinFadeIn 0.4s ease-out forwards;
-}
-
-/* TEXTO mantido 250px */
-#splash-text {
-  width: 250px;
-  max-width: 90%;
-  height: auto;
-  display: block;
-  margin: 0 auto;
-  opacity: 0;
-  transform: translateX(-40px);
-  animation: textSlideIn 0.5s ease-out 0.7s forwards;
-}
-
-/* Animações ajustadas */
-@keyframes pinFadeIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes textSlideIn {
-  0% {
-    opacity: 0;
-    transform: translateX(-40px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Fade out refinado */
-.splash-fade-out {
-  animation: splashFadeOut 0.4s ease-out forwards !important;
-}
-
-@keyframes splashFadeOut {
-  0% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-/* Ajustes responsivos */
-@media (min-width: 768px) {
-  .splash-container {
-    max-width: 400px;
+// splash.js - VERSÃO REFINADA
+document.addEventListener('DOMContentLoaded', function() {
+  const splashScreen = document.getElementById('splash-screen');
+  const body = document.body;
+  const iframe = document.querySelector('iframe');
+  
+  // 1. Esconde iframe inicialmente
+  if (iframe) {
+    iframe.style.display = 'none';
+    iframe.style.visibility = 'hidden';
   }
   
-  #splash-pin {
-    width: 180px;
-    height: 180px;
+  // 2. Verificar se é app instalado
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const isInWebView = navigator.userAgent.includes('wv') || 
+                      navigator.userAgent.includes('WebView');
+  
+  // 3. Se for NAVEGADOR comum: sem splash
+  if (!isStandalone && !isInWebView) {
+    console.log('🌐 Navegador web - Sem splash');
+    if (splashScreen) splashScreen.style.display = 'none';
+    if (iframe) {
+      iframe.style.display = 'block';
+      iframe.style.visibility = 'visible';
+    }
+    body.classList.add('splash-complete');
+    return;
   }
   
-  #splash-text {
-    width: 300px;
-  }
-}
-
-/* Para telas muito altas (iPhone, etc) */
-@media (max-height: 700px) {
-  #splash-pin {
-    width: 130px;
-    height: 130px;
-  }
+  // 4. Se for APP INSTALADO: mostrar splash refinada
+  console.log('📱 App instalado - Mostrando splash refinada');
   
-  #splash-text {
-    width: 220px;
-  }
-}
+  // Configuração de tempos (em milissegundos)
+  const TIMING = {
+    PIN_FADE_IN: 400,      // 0.4s
+    PAUSE_AFTER_PIN: 300,  // 0.3s
+    TEXT_SLIDE_IN: 500,    // 0.5s
+    DISPLAY_BOTH: 1000,    // 1.0s
+    FADE_OUT: 400          // 0.4s
+  };
+  
+  // Tempo total: 0.4 + 0.3 + 0.5 + 1.0 + 0.4 = 2.6 segundos
+  const TOTAL_DURATION = 
+    TIMING.PIN_FADE_IN + 
+    TIMING.PAUSE_AFTER_PIN + 
+    TIMING.TEXT_SLIDE_IN + 
+    TIMING.DISPLAY_BOTH + 
+    TIMING.FADE_OUT;
+  
+  // Inicia o processo
+  setTimeout(() => {
+    // Fade out da splash
+    splashScreen.classList.add('splash-fade-out');
+    
+    // Após fade out, mostrar iframe
+    setTimeout(() => {
+      body.classList.add('splash-complete');
+      
+      // Remove splash do DOM
+      if (splashScreen.parentNode) {
+        setTimeout(() => {
+          splashScreen.parentNode.removeChild(splashScreen);
+        }, 100);
+      }
+      
+      // Mostra iframe
+      if (iframe) {
+        iframe.style.display = 'block';
+        iframe.style.visibility = 'visible';
+        iframe.style.opacity = '0';
+        iframe.style.transition = 'opacity 0.3s ease';
+        
+        // Fade in do iframe
+        setTimeout(() => {
+          iframe.style.opacity = '1';
+        }, 50);
+      }
+      
+    }, TIMING.FADE_OUT);
+    
+  }, TOTAL_DURATION - TIMING.FADE_OUT);
+  
+  // Fallback de segurança
+  setTimeout(() => {
+    if (!body.classList.contains('splash-complete')) {
+      console.log('⚠️ Fallback de segurança ativado');
+      body.classList.add('splash-complete');
+      if (splashScreen && splashScreen.parentNode) {
+        splashScreen.parentNode.removeChild(splashScreen);
+      }
+      if (iframe) {
+        iframe.style.display = 'block';
+        iframe.style.visibility = 'visible';
+      }
+    }
+  }, TOTAL_DURATION + 2000); // 2 segundos extra de segurança
+});
