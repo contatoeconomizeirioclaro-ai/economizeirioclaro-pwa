@@ -1,4 +1,4 @@
-/* splash.css */
+/* splash.css - VERSÃO REFINADA */
 #splash-screen {
   position: fixed;
   top: 0;
@@ -11,10 +11,9 @@
   align-items: center;
   z-index: 9999;
   opacity: 1;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.4s ease;
 }
 
-/* Esconde splash quando completo */
 body.splash-complete #splash-screen {
   opacity: 0;
   pointer-events: none;
@@ -28,18 +27,18 @@ body.splash-complete #splash-screen {
   padding: 20px;
 }
 
-/* Estilo do PIN */
+/* PIN aumentado para 150px */
 #splash-pin {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 30px;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 5px; /* Espaço de 5px abaixo */
   display: block;
   opacity: 0;
   transform: scale(0.9);
-  animation: pinFadeIn 0.8s ease-out forwards;
+  animation: pinFadeIn 0.4s ease-out forwards;
 }
 
-/* Estilo do TEXTO */
+/* TEXTO mantido 250px */
 #splash-text {
   width: 250px;
   max-width: 90%;
@@ -47,11 +46,11 @@ body.splash-complete #splash-screen {
   display: block;
   margin: 0 auto;
   opacity: 0;
-  transform: translateX(-50px);
-  animation: textSlideIn 0.8s ease-out 0.5s forwards;
+  transform: translateX(-40px);
+  animation: textSlideIn 0.5s ease-out 0.7s forwards;
 }
 
-/* Animações */
+/* Animações ajustadas */
 @keyframes pinFadeIn {
   0% {
     opacity: 0;
@@ -66,7 +65,7 @@ body.splash-complete #splash-screen {
 @keyframes textSlideIn {
   0% {
     opacity: 0;
-    transform: translateX(-50px);
+    transform: translateX(-40px);
   }
   100% {
     opacity: 1;
@@ -74,12 +73,12 @@ body.splash-complete #splash-screen {
   }
 }
 
-/* Fade out */
-.fade-out {
-  animation: fadeOut 0.5s ease-out forwards !important;
+/* Fade out refinado */
+.splash-fade-out {
+  animation: splashFadeOut 0.4s ease-out forwards !important;
 }
 
-@keyframes fadeOut {
+@keyframes splashFadeOut {
   0% {
     opacity: 1;
   }
@@ -88,14 +87,30 @@ body.splash-complete #splash-screen {
   }
 }
 
-/* Ajuste para telas maiores */
+/* Ajustes responsivos */
 @media (min-width: 768px) {
+  .splash-container {
+    max-width: 400px;
+  }
+  
   #splash-pin {
-    width: 150px;
-    height: 150px;
+    width: 180px;
+    height: 180px;
   }
   
   #splash-text {
     width: 300px;
+  }
+}
+
+/* Para telas muito altas (iPhone, etc) */
+@media (max-height: 700px) {
+  #splash-pin {
+    width: 130px;
+    height: 130px;
+  }
+  
+  #splash-text {
+    width: 220px;
   }
 }
