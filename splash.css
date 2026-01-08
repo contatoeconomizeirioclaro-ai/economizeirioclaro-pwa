@@ -29,13 +29,13 @@ body.splash-complete #splash-screen {
 
 /* PIN aumentado para 150px */
 #splash-pin {
-  width: 150px;
-  height: 150px;
+  width: 200px;
+  height: 200px;
   margin: 0 auto 5px; /* Espaço de 5px abaixo */
   display: block;
   opacity: 0;
   transform: scale(0.9);
-  animation: pinFadeIn 0.4s ease-out forwards;
+  animation: pinFadeIn 0.7s ease-out forwards;
 }
 
 /* TEXTO mantido 250px */
@@ -47,7 +47,7 @@ body.splash-complete #splash-screen {
   margin: 0 auto;
   opacity: 0;
   transform: translateX(-40px);
-  animation: textSlideIn 0.5s ease-out 0.7s forwards;
+  animation: textSlideIn 0.5s ease-out 0.10s forwards;
 }
 
 /* Animações ajustadas */
@@ -94,8 +94,8 @@ body.splash-complete #splash-screen {
   }
   
   #splash-pin {
-    width: 180px;
-    height: 180px;
+    width: 200px;
+    height: 200px;
   }
   
   #splash-text {
