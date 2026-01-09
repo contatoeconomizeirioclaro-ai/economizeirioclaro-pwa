@@ -124,7 +124,7 @@
 
   <script>
   // ============================================
-  // SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO ESTÁVEL
+  // SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO FINAL
   // ============================================
 
   document.addEventListener('DOMContentLoaded', function() {
@@ -134,52 +134,45 @@
     // CONFIGURAÇÕES DO SISTEMA
     // ============================================
     
-    // CONFIG: Mudar para TRUE para ativar push notifications (precisa de backend)
-    const USE_PUSH_NOTIFICATIONS = false; // Mantenha false para usar GitHub
+    // CONFIG: Sistema de push notifications (desativado - precisa de backend)
+    const USE_PUSH_NOTIFICATIONS = false;
     
-    // CONFIG: Sistema de notificações via GitHub (RECOMENDADO)
+    // CONFIG: Sistema de notificações via GitHub (ATIVADO)
     const GITHUB_NOTIFICATIONS = true;
     const GITHUB_JSON_URL = 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/notificacoes.json';
-    const CHECK_INTERVAL_DAYS = 1; // Verificar a cada 1 dia
     
-    // Registrar Service Worker apropriado
+    // ============================================
+    // REGISTRO DO SERVICE WORKER
+    // ============================================
+    
     if ('serviceWorker' in navigator) {
-      const swToRegister = USE_PUSH_NOTIFICATIONS ? '/sw-push.js' : '/sw.js';
+      // SEMPRE usa sw.js (agora unificado)
+      const swToRegister = '/sw.js';
       
       navigator.serviceWorker.register(swToRegister)
         .then(registration => {
-          console.log(`✅ Service Worker registrado: ${swToRegister}`, registration.scope);
+          console.log(`✅ Service Worker registrado: ${swToRegister}`);
           
-          // Inicializar sistemas de notificação
-          if (USE_PUSH_NOTIFICATIONS) {
-            initPushNotificationSystem(registration);
-          }
-          
+          // Inicializar sistema GitHub (sempre ativo)
           if (GITHUB_NOTIFICATIONS) {
             initGitHubNotificationSystem(registration);
           }
+          
+          // Inicializar push apenas se configurado
+          if (USE_PUSH_NOTIFICATIONS) {
+            initPushNotificationSystem(registration);
+          }
         })
         .catch(error => {
-          console.error(`❌ Falha no Service Worker (${swToRegister}):`, error);
-          
-          // Fallback para sw.js se sw-push.js falhar
-          if (USE_PUSH_NOTIFICATIONS && swToRegister === '/sw-push.js') {
-            console.log('🔄 Tentando fallback para sw.js...');
-            navigator.serviceWorker.register('/sw.js')
-              .then(fallbackReg => {
-                console.log('✅ Fallback sw.js registrado');
-                if (GITHUB_NOTIFICATIONS) {
-                  initGitHubNotificationSystem(fallbackReg);
-                }
-              })
-              .catch(fallbackError => {
-                console.error('❌ Fallback também falhou:', fallbackError);
-              });
+          console.error(`❌ Falha no Service Worker:`, error);
+          // Tentar GitHub notifications mesmo sem SW
+          if (GITHUB_NOTIFICATIONS) {
+            initGitHubNotificationSystem();
           }
         });
     } else {
       console.log('⚠️ Navegador não suporta Service Worker');
-      // Tentar GitHub notifications mesmo sem service worker
+      // Tentar GitHub notifications mesmo sem SW
       if (GITHUB_NOTIFICATIONS) {
         initGitHubNotificationSystem();
       }
@@ -207,25 +200,22 @@
         return;
       }
       
-      // Esperar 5 segundos após carregamento (melhor UX)
+      // Esperar 3 segundos após carregamento
       setTimeout(async () => {
         try {
           await verificarNotificacoesGitHub(registration);
         } catch (erro) {
           console.error('❌ Erro no sistema GitHub:', erro);
         }
-      }, 5000);
+      }, 3000);
     }
     
     async function verificarNotificacoesGitHub(registration) {
       console.log('🔍 Verificando notificações no GitHub...');
       
       try {
-        // Buscar JSON do GitHub com cache-busting
-        const resposta = await fetch(`${GITHUB_JSON_URL}?t=${Date.now()}`, {
-          headers: { 'Cache-Control': 'no-cache' },
-          mode: 'cors'
-        });
+        // Buscar JSON do GitHub
+        const resposta = await fetch(`${GITHUB_JSON_URL}?t=${Date.now()}`);
         
         if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
         
@@ -259,16 +249,10 @@
         }
         
         // Atualizar última verificação
-        localStorage.setItem('github-last-check', new Date().toISOString().split('T')[0]);
+        localStorage.setItem('github-last-check', hoje);
         
       } catch (erro) {
         console.error('❌ Erro ao verificar GitHub:', erro);
-        // Tentar novamente em 1 hora se falhar
-        setTimeout(() => {
-          if (GITHUB_NOTIFICATIONS) {
-            verificarNotificacoesGitHub(registration);
-          }
-        }, 3600000); // 1 hora
       }
     }
     
@@ -282,8 +266,7 @@
     function mostrarNotificacoesEmSequencia(mensagens, registration) {
       let delay = 0;
       
-      mensagens.forEach((msg, index) => {
-        // Espaçar as notificações (3 segundos entre elas)
+      mensagens.forEach((msg) => {
         setTimeout(() => {
           mostrarNotificacaoLocal(msg, registration);
         }, delay);
@@ -293,63 +276,55 @@
     }
     
     function mostrarNotificacaoLocal(mensagem, registration) {
-      // Verificar se temos permissão para notificações
       if (!('Notification' in window)) {
         console.log('⚠️ Navegador não suporta notificações');
         return;
       }
       
-      const options = {
-        body: mensagem.mensagem || 'Nova oferta disponível!',
-        icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-        badge: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-        tag: `economizei-github-${mensagem.id}`,
-        data: {
+      // Método PREFERIDO: enviar mensagem para Service Worker
+      if (registration && registration.active) {
+        registration.active.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          title: mensagem.titulo || '📱 Economizei',
+          body: mensagem.mensagem || 'Nova oferta disponível!',
+          icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
           url: mensagem.url || 'https://www.economizeirioclaro.com.br',
-          id: mensagem.id,
-          source: 'github'
-        },
-        vibrate: [200, 100, 200],
-        requireInteraction: mensagem.prioridade === 'alta'
-      };
+          id: mensagem.id
+        });
+        console.log('📨 Mensagem enviada para SW');
+        return;
+      }
       
-      // Tente usar service worker primeiro
-      if (registration && 'showNotification' in registration) {
-        registration.showNotification(mensagem.titulo || '📱 Economizei', options)
-          .catch(err => {
-            console.log('⚠️ SW notification falhou, tentando fallback...', err);
-            mostrarNotificacaoFallback(mensagem, options);
-          });
-      } else if (Notification.permission === 'granted') {
-        // Fallback: notificação do navegador
-        mostrarNotificacaoFallback(mensagem, options);
+      // Fallback: notificação direta do navegador
+      if (Notification.permission === 'granted') {
+        mostrarNotificacaoFallback(mensagem);
       } else if (Notification.permission === 'default') {
         // Solicitar permissão silenciosamente
         Notification.requestPermission().then(permission => {
           if (permission === 'granted') {
-            mostrarNotificacaoFallback(mensagem, options);
+            mostrarNotificacaoFallback(mensagem);
           }
         });
       }
     }
     
-    function mostrarNotificacaoFallback(mensagem, options) {
+    function mostrarNotificacaoFallback(mensagem) {
       try {
         const notificacao = new Notification(
           mensagem.titulo || '📱 Economizei', 
-          options
+          {
+            body: mensagem.mensagem || 'Nova oferta disponível!',
+            icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+            data: {
+              url: mensagem.url || 'https://www.economizeirioclaro.com.br',
+              id: mensagem.id
+            }
+          }
         );
         
         notificacao.onclick = () => {
-          window.open(
-            mensagem.url || 'https://www.economizeirioclaro.com.br', 
-            '_blank'
-          );
+          window.open(mensagem.url || 'https://www.economizeirioclaro.com.br', '_blank');
           notificacao.close();
-        };
-        
-        notificacao.onclose = () => {
-          console.log('📪 Notificação fechada:', mensagem.id);
         };
       } catch (err) {
         console.error('❌ Erro ao criar notificação:', err);
@@ -360,9 +335,8 @@
       const novosIds = novasMensagens.map(msg => msg.id.toString());
       const todasVistas = [...mensagensVistasAnteriores, ...novosIds];
       
-      // Manter apenas últimas 50 mensagens (evitar armazenamento excessivo)
+      // Manter apenas últimas 50 mensagens
       const limitadas = todasVistas.slice(-50);
-      
       localStorage.setItem('github-mensagens-vistas', JSON.stringify(limitadas));
     }
     
@@ -382,25 +356,11 @@
       const isAlreadyEnabled = localStorage.getItem('economizei-push-enabled') === 'true';
       const permissionStatus = Notification.permission;
       
-      console.log('📊 Status Push:', {
-        enabled: isAlreadyEnabled,
-        permission: permissionStatus
-      });
-      
-      // Mostrar botão apenas se:
-      // 1. Não está já ativado
-      // 2. Permissão não foi negada
-      // 3. Permissão não foi concedida ainda
+      // Mostrar botão apenas se necessário
       if (!isAlreadyEnabled && permissionStatus === 'default') {
         notificationBtn.style.display = 'block';
       } else {
         notificationBtn.style.display = 'none';
-        
-        if (permissionStatus === 'granted') {
-          console.log('✅ Push notifications já ativadas');
-        } else if (permissionStatus === 'denied') {
-          console.log('❌ Permissão para push foi negada');
-        }
       }
       
       // Evento de clique no botão
@@ -412,7 +372,6 @@
           notificationBtn.disabled = true;
           
           const permission = await Notification.requestPermission();
-          console.log('🔓 Resultado da permissão:', permission);
           
           if (permission === 'granted') {
             try {
@@ -430,8 +389,6 @@
               notificationBtn.innerHTML = '✅ Push Ativadas!';
               notificationBtn.style.background = '#4CAF50';
               
-              console.log('🎉 Inscrição push bem-sucedida');
-              
               setTimeout(() => {
                 notificationBtn.style.display = 'none';
               }, 2000);
@@ -440,7 +397,6 @@
               console.error('❌ Erro na inscrição push:', subscribeError);
               
               localStorage.setItem('economizei-push-enabled', 'true');
-              
               notificationBtn.innerHTML = '✅ Notificações Locais';
               notificationBtn.style.background = '#4CAF50';
               
@@ -499,7 +455,7 @@
     }
     
     // ============================================
-    // TESTE MANUAL DE NOTIFICAÇÃO (para desenvolvimento)
+    // TESTE E DEBUG (apenas em desenvolvimento)
     // ============================================
     
     // Adicionar botão de teste se estiver em desenvolvimento
@@ -524,14 +480,11 @@
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.ready.then(reg => {
             reg.showNotification('📱 Economizei - Teste', {
-              body: 'Esta é uma notificação de teste do GitHub system!',
+              body: 'Teste do sistema de notificações!',
               icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-              badge: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-              vibrate: [200, 100, 200],
               data: {
                 url: 'https://www.economizeirioclaro.com.br',
-                test: true,
-                source: 'test'
+                test: true
               }
             });
           });
@@ -540,9 +493,9 @@
       
       document.body.appendChild(testBtn);
       
-      // Botão para limpar cache de notificações
+      // Botão para limpar cache
       const clearBtn = document.createElement('button');
-      clearBtn.innerHTML = '🔄 Limpar Cache';
+      clearBtn.innerHTML = '🗑️ Limpar Cache';
       clearBtn.style.cssText = `
         position: fixed;
         bottom: 110px;
@@ -560,11 +513,44 @@
       clearBtn.addEventListener('click', () => {
         localStorage.removeItem('github-last-check');
         localStorage.removeItem('github-mensagens-vistas');
-        console.log('🗑️ Cache de notificações limpo!');
-        alert('Cache limpo. Notificações serão verificadas novamente.');
+        console.log('✅ Cache limpo! Recarregue a página.');
+        alert('Cache limpo. Recarregue a página para testar.');
       });
       
       document.body.appendChild(clearBtn);
+      
+      // Botão para testar GitHub diretamente
+      const githubBtn = document.createElement('button');
+      githubBtn.innerHTML = '🐙 Testar GitHub';
+      githubBtn.style.cssText = `
+        position: fixed;
+        bottom: 150px;
+        left: 20px;
+        background: #24292e;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 10000;
+      `;
+      
+      githubBtn.addEventListener('click', () => {
+        console.log('🧪 Testando conexão GitHub...');
+        fetch(GITHUB_JSON_URL)
+          .then(r => r.json())
+          .then(data => {
+            console.log('✅ GitHub OK:', data);
+            alert('GitHub OK! ' + data.mensagens.length + ' mensagens');
+          })
+          .catch(err => {
+            console.error('❌ GitHub erro:', err);
+            alert('Erro GitHub: ' + err.message);
+          });
+      });
+      
+      document.body.appendChild(githubBtn);
     }
   });
   </script>
