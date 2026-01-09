@@ -72,6 +72,22 @@
     #push-notification-btn:active {
       transform: translateY(0);
     }
+    
+    /* Botão para GitHub Notifications (se necessário) */
+    #github-notification-btn {
+      position: fixed;
+      bottom: 70px;
+      right: 20px;
+      background: #24292e;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 10000;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -108,377 +124,449 @@
 
   <script>
   // ============================================
-// SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO ESTÁVEL
-// ============================================
-
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('🚀 Economizei - Inicializando...');
-  
-  // CONFIGURAÇÃO: Mudar para TRUE para ativar push notifications
-  const USE_PUSH_NOTIFICATIONS = true; // ← MUDADO DE true PARA false
+  // SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO ESTÁVEL
   // ============================================
-// SISTEMA DE NOTIFICAÇÕES VIA GITHUB
-// ============================================
 
-const GITHUB_NOTIFICATIONS = true;
-const GITHUB_JSON_URL = 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/notificacoes.json';
-const CHECK_INTERVAL_DAYS = 1; // Verificar a cada 1 dia
-  
-  // Registrar Service Worker apropriado
-  if ('serviceWorker' in navigator) {
-    const swToRegister = USE_PUSH_NOTIFICATIONS ? '/sw-push.js' : '/sw.js';
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Economizei - Inicializando...');
     
-    navigator.serviceWorker.register(swToRegister)
-      .then(registration => {
-        console.log(`✅ Service Worker registrado: ${swToRegister}`, registration.scope);
-        
-        // Se for push notifications, inicializar sistema
-        if (USE_PUSH_NOTIFICATIONS) {
-          initPushNotificationSystem(registration);
-        }
-        if (GITHUB_NOTIFICATIONS) {
-  initGitHubNotificationSystem();
-}
-      })
-      .catch(error => {
-        console.error(`❌ Falha no Service Worker (${swToRegister}):`, error);
-        
-        // Fallback para sw.js se sw-push.js falhar
-        if (USE_PUSH_NOTIFICATIONS && swToRegister === '/sw-push.js') {
-          console.log('🔄 Tentando fallback para sw.js...');
-          navigator.serviceWorker.register('/sw.js')
-            .then(fallbackReg => {
-              console.log('✅ Fallback sw.js registrado');
-            })
-            .catch(fallbackError => {
-              console.error('❌ Fallback também falhou:', fallbackError);
-            });
-        }
-      });
-  } else {
-    console.log('⚠️ Navegador não suporta Service Worker');
-  }
-  
+    // ============================================
+    // CONFIGURAÇÕES DO SISTEMA
+    // ============================================
+    
+    // CONFIG: Mudar para TRUE para ativar push notifications (precisa de backend)
+    const USE_PUSH_NOTIFICATIONS = false; // Mantenha false para usar GitHub
+    
+    // CONFIG: Sistema de notificações via GitHub (RECOMENDADO)
+    const GITHUB_NOTIFICATIONS = true;
+    const GITHUB_JSON_URL = 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/notificacoes.json';
+    const CHECK_INTERVAL_DAYS = 1; // Verificar a cada 1 dia
+    
+    // Registrar Service Worker apropriado
+    if ('serviceWorker' in navigator) {
+      const swToRegister = USE_PUSH_NOTIFICATIONS ? '/sw-push.js' : '/sw.js';
       
-      // Verificar se está rodando como app instalado
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('📱 Economizei rodando como app instalado');
-        document.documentElement.setAttribute('data-app-mode', 'installed');
+      navigator.serviceWorker.register(swToRegister)
+        .then(registration => {
+          console.log(`✅ Service Worker registrado: ${swToRegister}`, registration.scope);
+          
+          // Inicializar sistemas de notificação
+          if (USE_PUSH_NOTIFICATIONS) {
+            initPushNotificationSystem(registration);
+          }
+          
+          if (GITHUB_NOTIFICATIONS) {
+            initGitHubNotificationSystem(registration);
+          }
+        })
+        .catch(error => {
+          console.error(`❌ Falha no Service Worker (${swToRegister}):`, error);
+          
+          // Fallback para sw.js se sw-push.js falhar
+          if (USE_PUSH_NOTIFICATIONS && swToRegister === '/sw-push.js') {
+            console.log('🔄 Tentando fallback para sw.js...');
+            navigator.serviceWorker.register('/sw.js')
+              .then(fallbackReg => {
+                console.log('✅ Fallback sw.js registrado');
+                if (GITHUB_NOTIFICATIONS) {
+                  initGitHubNotificationSystem(fallbackReg);
+                }
+              })
+              .catch(fallbackError => {
+                console.error('❌ Fallback também falhou:', fallbackError);
+              });
+          }
+        });
+    } else {
+      console.log('⚠️ Navegador não suporta Service Worker');
+      // Tentar GitHub notifications mesmo sem service worker
+      if (GITHUB_NOTIFICATIONS) {
+        initGitHubNotificationSystem();
+      }
+    }
+    
+    // Verificar se está rodando como app instalado
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('📱 Economizei rodando como app instalado');
+      document.documentElement.setAttribute('data-app-mode', 'installed');
+    }
+    
+    // ============================================
+    // SISTEMA DE NOTIFICAÇÕES VIA GITHUB (LOCAIS)
+    // ============================================
+    
+    function initGitHubNotificationSystem(registration = null) {
+      console.log('🐙 Inicializando sistema GitHub Notifications...');
+      
+      // Verificar se já verificou hoje
+      const ultimaVerificacao = localStorage.getItem('github-last-check');
+      const hoje = new Date().toISOString().split('T')[0];
+      
+      if (ultimaVerificacao === hoje) {
+        console.log('📅 Já verificou notificações hoje');
+        return;
       }
       
-      // ============================================
-      // SISTEMA DE PUSH NOTIFICATIONS
-      // ============================================
-
-// ============================================
-// SISTEMA DE NOTIFICAÇÕES VIA GITHUB (LOCAIS)
-// ============================================
-
-function initGitHubNotificationSystem() {
-  console.log('🐙 Inicializando sistema GitHub Notifications...');
-  
-  // Verificar se já verificou hoje
-  const ultimaVerificacao = localStorage.getItem('github-last-check');
-  const hoje = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
-  
-  if (ultimaVerificacao === hoje) {
-    console.log('📅 Já verificou notificações hoje');
-    return;
-  }
-  
-  // Esperar 3 segundos para melhor experiência do usuário
-  setTimeout(async () => {
-    try {
-      await verificarNotificacoesGitHub();
-    } catch (erro) {
-      console.error('❌ Erro no sistema GitHub:', erro);
-    }
-  }, 3000);
-}
-
-async function verificarNotificacoesGitHub() {
-  console.log('🔍 Verificando notificações no GitHub...');
-  
-  try {
-    // Buscar JSON do GitHub com cache-busting
-    const resposta = await fetch(`${GITHUB_JSON_URL}?t=${Date.now()}`, {
-      headers: { 'Cache-Control': 'no-cache' }
-    });
-    
-    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-    
-    const dados = await resposta.json();
-    
-    if (!dados.mensagens || !Array.isArray(dados.mensagens)) {
-      throw new Error('Formato inválido do JSON');
+      // Esperar 5 segundos após carregamento (melhor UX)
+      setTimeout(async () => {
+        try {
+          await verificarNotificacoesGitHub(registration);
+        } catch (erro) {
+          console.error('❌ Erro no sistema GitHub:', erro);
+        }
+      }, 5000);
     }
     
-    // Mensagens já vistas
-    const mensagensVistas = JSON.parse(
-      localStorage.getItem('github-mensagens-vistas') || '[]'
-    );
-    
-    // Filtrar mensagens NÃO vistas
-    const novasMensagens = dados.mensagens.filter(msg => 
-      !mensagensVistas.includes(msg.id.toString())
-    );
-    
-    console.log(`📊 ${novasMensagens.length} nova(s) mensagem(ns)`);
-    
-    if (novasMensagens.length > 0) {
-      // Ordenar por prioridade
-      const novasOrdenadas = ordenarPorPrioridade(novasMensagens);
+    async function verificarNotificacoesGitHub(registration) {
+      console.log('🔍 Verificando notificações no GitHub...');
       
-      // Mostrar notificações
-      mostrarNotificacoesEmSequencia(novasOrdenadas);
-      
-      // Salvar como vistas
-      salvarMensagensVistas(novasOrdenadas, mensagensVistas);
-    }
-    
-    // Atualizar última verificação
-    localStorage.setItem('github-last-check', new Date().toISOString().split('T')[0]);
-    
-  } catch (erro) {
-    console.error('❌ Erro ao verificar GitHub:', erro);
-  }
-}
-
-function ordenarPorPrioridade(mensagens) {
-  const prioridades = { alta: 3, media: 2, baixa: 1 };
-  return [...mensagens].sort((a, b) => {
-    return (prioridades[b.prioridade] || 1) - (prioridades[a.prioridade] || 1);
-  });
-}
-
-function mostrarNotificacoesEmSequencia(mensagens) {
-  mensagens.forEach((msg, index) => {
-    // Espaçar as notificações (2 segundos entre elas)
-    setTimeout(() => {
-      mostrarNotificacaoLocal(msg);
-    }, index * 2000);
-  });
-}
-
-function mostrarNotificacaoLocal(mensagem) {
-  if (!('Notification' in window)) return;
-  
-  // Criar notificação local (não precisa de permissão se for do próprio site)
-  const options = {
-    body: mensagem.mensagem,
-    icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-    badge: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-    tag: `economizei-${mensagem.id}`, // Evita duplicatas
-    data: {
-      url: mensagem.url || 'https://www.economizeirioclaro.com.br',
-      id: mensagem.id
-    }
-  };
-  
-  // Usar service worker se disponível
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification(mensagem.titulo, options);
-    });
-  } else {
-    // Fallback: notificação do navegador
-    const notificacao = new Notification(mensagem.titulo, options);
-    
-    notificacao.onclick = () => {
-      window.open(mensagem.url || 'https://www.economizeirioclaro.com.br', '_blank');
-    };
-  }
-}
-
-function salvarMensagensVistas(novasMensagens, mensagensVistasAnteriores) {
-  const novosIds = novasMensagens.map(msg => msg.id.toString());
-  const todasVistas = [...mensagensVistasAnteriores, ...novosIds];
-  
-  // Manter apenas últimas 50 mensagens (evitar armazenamento excessivo)
-  const limitadas = todasVistas.slice(-50);
-  
-  localStorage.setItem('github-mensagens-vistas', JSON.stringify(limitadas));
-}
-  
-      function initPushNotificationSystem(registration) {
-        console.log('🔔 Inicializando sistema de push notifications...');
-        
-        // Criar botão de ativação
-        const notificationBtn = document.createElement('button');
-        notificationBtn.id = 'push-notification-btn';
-        notificationBtn.innerHTML = '🔔 Ativar Notificações';
-        
-        // Estado inicial
-        const isAlreadyEnabled = localStorage.getItem('economizei-push-enabled') === 'true';
-        const permissionStatus = Notification.permission;
-        
-        console.log('📊 Status:', {
-          enabled: isAlreadyEnabled,
-          permission: permissionStatus
+      try {
+        // Buscar JSON do GitHub com cache-busting
+        const resposta = await fetch(`${GITHUB_JSON_URL}?t=${Date.now()}`, {
+          headers: { 'Cache-Control': 'no-cache' },
+          mode: 'cors'
         });
         
-        // Mostrar botão apenas se:
-        // 1. Não está já ativado
-        // 2. Permissão não foi negada
-        // 3. Permissão não foi concedida ainda
-        if (!isAlreadyEnabled && permissionStatus === 'default') {
-          notificationBtn.style.display = 'block';
-        } else {
-          notificationBtn.style.display = 'none';
-          
-          if (permissionStatus === 'granted') {
-            console.log('✅ Notificações já ativadas anteriormente');
-          } else if (permissionStatus === 'denied') {
-            console.log('❌ Permissão para notificações foi negada');
-          }
+        if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+        
+        const dados = await resposta.json();
+        
+        if (!dados.mensagens || !Array.isArray(dados.mensagens)) {
+          throw new Error('Formato inválido do JSON');
         }
         
-        // Evento de clique no botão
-        notificationBtn.addEventListener('click', async function() {
-          console.log('🖱️ Botão de notificações clicado');
+        // Mensagens já vistas
+        const mensagensVistas = JSON.parse(
+          localStorage.getItem('github-mensagens-vistas') || '[]'
+        );
+        
+        // Filtrar mensagens NÃO vistas
+        const novasMensagens = dados.mensagens.filter(msg => 
+          !mensagensVistas.includes(msg.id.toString())
+        );
+        
+        console.log(`📊 ${novasMensagens.length} nova(s) mensagem(ns)`);
+        
+        if (novasMensagens.length > 0) {
+          // Ordenar por prioridade
+          const novasOrdenadas = ordenarPorPrioridade(novasMensagens);
           
-          try {
-            // Mudar texto do botão
-            notificationBtn.innerHTML = '⏳ Solicitando permissão...';
-            notificationBtn.disabled = true;
-            
-            // Solicitar permissão
-            const permission = await Notification.requestPermission();
-            console.log('🔓 Resultado da permissão:', permission);
-            
-            if (permission === 'granted') {
-              // Tentar inscrever para push notifications
-              try {
-                // Chave pública VAPID de teste (substituir por real depois)
-                const vapidPublicKey = 'BKYvJLwQ9gQcKJvK7vL8cT7HJkLp09gFcVbN7mKjL9hTqW8zXcVbN7mKjL9hTqW8zXc';
-                
-                const subscription = await registration.pushManager.subscribe({
-                  userVisibleOnly: true,
-                  applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-                });
-                
-                // Salvar no localStorage
-                localStorage.setItem('economizei-push-enabled', 'true');
-                localStorage.setItem('economizei-push-subscription', JSON.stringify(subscription));
-                
-                // Atualizar botão
-                notificationBtn.innerHTML = '✅ Notificações Ativadas!';
-                notificationBtn.style.background = '#4CAF50';
-                
-                console.log('🎉 Inscrição para push bem-sucedida:', subscription);
-                
-                // Esconder botão após 2 segundos
-                setTimeout(() => {
-                  notificationBtn.style.display = 'none';
-                }, 2000);
-                
-              } catch (subscribeError) {
-                console.error('❌ Erro na inscrição push:', subscribeError);
-                
-                // Mesmo sem push, marcar como ativado para notificações locais
-                localStorage.setItem('economizei-push-enabled', 'true');
-                
-                notificationBtn.innerHTML = '✅ Notificações Locais Ativadas';
-                notificationBtn.style.background = '#4CAF50';
-                
-                setTimeout(() => {
-                  notificationBtn.style.display = 'none';
-                }, 2000);
-              }
+          // Mostrar notificações
+          mostrarNotificacoesEmSequencia(novasOrdenadas, registration);
+          
+          // Salvar como vistas
+          salvarMensagensVistas(novasOrdenadas, mensagensVistas);
+        }
+        
+        // Atualizar última verificação
+        localStorage.setItem('github-last-check', new Date().toISOString().split('T')[0]);
+        
+      } catch (erro) {
+        console.error('❌ Erro ao verificar GitHub:', erro);
+        // Tentar novamente em 1 hora se falhar
+        setTimeout(() => {
+          if (GITHUB_NOTIFICATIONS) {
+            verificarNotificacoesGitHub(registration);
+          }
+        }, 3600000); // 1 hora
+      }
+    }
+    
+    function ordenarPorPrioridade(mensagens) {
+      const prioridades = { alta: 3, media: 2, baixa: 1 };
+      return [...mensagens].sort((a, b) => {
+        return (prioridades[b.prioridade] || 1) - (prioridades[a.prioridade] || 1);
+      });
+    }
+    
+    function mostrarNotificacoesEmSequencia(mensagens, registration) {
+      let delay = 0;
+      
+      mensagens.forEach((msg, index) => {
+        // Espaçar as notificações (3 segundos entre elas)
+        setTimeout(() => {
+          mostrarNotificacaoLocal(msg, registration);
+        }, delay);
+        
+        delay += 3000; // 3 segundos entre notificações
+      });
+    }
+    
+    function mostrarNotificacaoLocal(mensagem, registration) {
+      // Verificar se temos permissão para notificações
+      if (!('Notification' in window)) {
+        console.log('⚠️ Navegador não suporta notificações');
+        return;
+      }
+      
+      const options = {
+        body: mensagem.mensagem || 'Nova oferta disponível!',
+        icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+        badge: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+        tag: `economizei-github-${mensagem.id}`,
+        data: {
+          url: mensagem.url || 'https://www.economizeirioclaro.com.br',
+          id: mensagem.id,
+          source: 'github'
+        },
+        vibrate: [200, 100, 200],
+        requireInteraction: mensagem.prioridade === 'alta'
+      };
+      
+      // Tente usar service worker primeiro
+      if (registration && 'showNotification' in registration) {
+        registration.showNotification(mensagem.titulo || '📱 Economizei', options)
+          .catch(err => {
+            console.log('⚠️ SW notification falhou, tentando fallback...', err);
+            mostrarNotificacaoFallback(mensagem, options);
+          });
+      } else if (Notification.permission === 'granted') {
+        // Fallback: notificação do navegador
+        mostrarNotificacaoFallback(mensagem, options);
+      } else if (Notification.permission === 'default') {
+        // Solicitar permissão silenciosamente
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            mostrarNotificacaoFallback(mensagem, options);
+          }
+        });
+      }
+    }
+    
+    function mostrarNotificacaoFallback(mensagem, options) {
+      try {
+        const notificacao = new Notification(
+          mensagem.titulo || '📱 Economizei', 
+          options
+        );
+        
+        notificacao.onclick = () => {
+          window.open(
+            mensagem.url || 'https://www.economizeirioclaro.com.br', 
+            '_blank'
+          );
+          notificacao.close();
+        };
+        
+        notificacao.onclose = () => {
+          console.log('📪 Notificação fechada:', mensagem.id);
+        };
+      } catch (err) {
+        console.error('❌ Erro ao criar notificação:', err);
+      }
+    }
+    
+    function salvarMensagensVistas(novasMensagens, mensagensVistasAnteriores) {
+      const novosIds = novasMensagens.map(msg => msg.id.toString());
+      const todasVistas = [...mensagensVistasAnteriores, ...novosIds];
+      
+      // Manter apenas últimas 50 mensagens (evitar armazenamento excessivo)
+      const limitadas = todasVistas.slice(-50);
+      
+      localStorage.setItem('github-mensagens-vistas', JSON.stringify(limitadas));
+    }
+    
+    // ============================================
+    // SISTEMA DE PUSH NOTIFICATIONS (OPCIONAL)
+    // ============================================
+    
+    function initPushNotificationSystem(registration) {
+      console.log('🔔 Inicializando sistema de push notifications...');
+      
+      // Criar botão de ativação
+      const notificationBtn = document.createElement('button');
+      notificationBtn.id = 'push-notification-btn';
+      notificationBtn.innerHTML = '🔔 Ativar Notificações Push';
+      
+      // Estado inicial
+      const isAlreadyEnabled = localStorage.getItem('economizei-push-enabled') === 'true';
+      const permissionStatus = Notification.permission;
+      
+      console.log('📊 Status Push:', {
+        enabled: isAlreadyEnabled,
+        permission: permissionStatus
+      });
+      
+      // Mostrar botão apenas se:
+      // 1. Não está já ativado
+      // 2. Permissão não foi negada
+      // 3. Permissão não foi concedida ainda
+      if (!isAlreadyEnabled && permissionStatus === 'default') {
+        notificationBtn.style.display = 'block';
+      } else {
+        notificationBtn.style.display = 'none';
+        
+        if (permissionStatus === 'granted') {
+          console.log('✅ Push notifications já ativadas');
+        } else if (permissionStatus === 'denied') {
+          console.log('❌ Permissão para push foi negada');
+        }
+      }
+      
+      // Evento de clique no botão
+      notificationBtn.addEventListener('click', async function() {
+        console.log('🖱️ Botão de push clicado');
+        
+        try {
+          notificationBtn.innerHTML = '⏳ Solicitando permissão...';
+          notificationBtn.disabled = true;
+          
+          const permission = await Notification.requestPermission();
+          console.log('🔓 Resultado da permissão:', permission);
+          
+          if (permission === 'granted') {
+            try {
+              // Chave pública VAPID de teste
+              const vapidPublicKey = 'BKYvJLwQ9gQcKJvK7vL8cT7HJkLp09gFcVbN7mKjL9hTqW8zXcVbN7mKjL9hTqW8zXc';
               
-            } else if (permission === 'denied') {
-              // Permissão negada
-              notificationBtn.innerHTML = '❌ Permissão Negada';
-              notificationBtn.style.background = '#f44336';
+              const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+              });
+              
+              localStorage.setItem('economizei-push-enabled', 'true');
+              localStorage.setItem('economizei-push-subscription', JSON.stringify(subscription));
+              
+              notificationBtn.innerHTML = '✅ Push Ativadas!';
+              notificationBtn.style.background = '#4CAF50';
+              
+              console.log('🎉 Inscrição push bem-sucedida');
               
               setTimeout(() => {
-                notificationBtn.innerHTML = '🔔 Ativar Notificações';
-                notificationBtn.style.background = '#f4c430';
-                notificationBtn.disabled = false;
-              }, 3000);
+                notificationBtn.style.display = 'none';
+              }, 2000);
               
-            } else {
-              // Permissão ignorada/dismissed
-              notificationBtn.innerHTML = '🔔 Ativar Notificações';
-              notificationBtn.disabled = false;
+            } catch (subscribeError) {
+              console.error('❌ Erro na inscrição push:', subscribeError);
+              
+              localStorage.setItem('economizei-push-enabled', 'true');
+              
+              notificationBtn.innerHTML = '✅ Notificações Locais';
+              notificationBtn.style.background = '#4CAF50';
+              
+              setTimeout(() => {
+                notificationBtn.style.display = 'none';
+              }, 2000);
             }
             
-          } catch (error) {
-            console.error('💥 Erro no processo de ativação:', error);
-            
-            notificationBtn.innerHTML = '❌ Erro - Tente Novamente';
+          } else if (permission === 'denied') {
+            notificationBtn.innerHTML = '❌ Permissão Negada';
             notificationBtn.style.background = '#f44336';
             
             setTimeout(() => {
-              notificationBtn.innerHTML = '🔔 Ativar Notificações';
+              notificationBtn.innerHTML = '🔔 Ativar Push';
               notificationBtn.style.background = '#f4c430';
               notificationBtn.disabled = false;
             }, 3000);
+            
+          } else {
+            notificationBtn.innerHTML = '🔔 Ativar Push';
+            notificationBtn.disabled = false;
           }
-        });
-        
-        // Adicionar botão ao body
-        document.body.appendChild(notificationBtn);
-        
-        // Função auxiliar para converter chave VAPID
-        function urlBase64ToUint8Array(base64String) {
-          const padding = '='.repeat((4 - base64String.length % 4) % 4);
-          const base64 = (base64String + padding)
-            .replace(/\-/g, '+')
-            .replace(/_/g, '/');
           
-          const rawData = window.atob(base64);
-          const outputArray = new Uint8Array(rawData.length);
+        } catch (error) {
+          console.error('💥 Erro no processo de ativação:', error);
           
-          for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-          }
-          return outputArray;
+          notificationBtn.innerHTML = '❌ Erro - Tente Novamente';
+          notificationBtn.style.background = '#f44336';
+          
+          setTimeout(() => {
+            notificationBtn.innerHTML = '🔔 Ativar Push';
+            notificationBtn.style.background = '#f4c430';
+            notificationBtn.disabled = false;
+          }, 3000);
         }
-      }
+      });
       
-      // ============================================
-      // TESTE MANUAL DE NOTIFICAÇÃO (para desenvolvimento)
-      // ============================================
+      // Adicionar botão ao body
+      document.body.appendChild(notificationBtn);
       
-      // Adicionar botão de teste se estiver em desenvolvimento
-      if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-        const testBtn = document.createElement('button');
-        testBtn.innerHTML = '🔧 Testar Notificação';
-        testBtn.style.cssText = `
-          position: fixed;
-          bottom: 20px;
-          left: 20px;
-          background: #9C27B0;
-          color: white;
-          border: none;
-          padding: 10px 15px;
-          border-radius: 20px;
-          font-size: 12px;
-          cursor: pointer;
-          z-index: 10000;
-        `;
+      // Função auxiliar para converter chave VAPID
+      function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+          .replace(/\-/g, '+')
+          .replace(/_/g, '/');
         
-        testBtn.addEventListener('click', () => {
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(reg => {
-              reg.showNotification('📱 Economizei - Teste', {
-                body: 'Esta é uma notificação de teste!',
-                icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-                badge: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-                vibrate: [200, 100, 200],
-                data: {
-                  url: 'https://www.economizeirioclaro.com.br',
-                  test: true
-                }
-              });
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
+    }
+    
+    // ============================================
+    // TESTE MANUAL DE NOTIFICAÇÃO (para desenvolvimento)
+    // ============================================
+    
+    // Adicionar botão de teste se estiver em desenvolvimento
+    if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+      const testBtn = document.createElement('button');
+      testBtn.innerHTML = '🔧 Testar Notificação';
+      testBtn.style.cssText = `
+        position: fixed;
+        bottom: 70px;
+        left: 20px;
+        background: #9C27B0;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 10000;
+      `;
+      
+      testBtn.addEventListener('click', () => {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification('📱 Economizei - Teste', {
+              body: 'Esta é uma notificação de teste do GitHub system!',
+              icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+              badge: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+              vibrate: [200, 100, 200],
+              data: {
+                url: 'https://www.economizeirioclaro.com.br',
+                test: true,
+                source: 'test'
+              }
             });
-          }
-        });
-        
-        document.body.appendChild(testBtn);
-      }
-    });
+          });
+        }
+      });
+      
+      document.body.appendChild(testBtn);
+      
+      // Botão para limpar cache de notificações
+      const clearBtn = document.createElement('button');
+      clearBtn.innerHTML = '🔄 Limpar Cache';
+      clearBtn.style.cssText = `
+        position: fixed;
+        bottom: 110px;
+        left: 20px;
+        background: #FF9800;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 10000;
+      `;
+      
+      clearBtn.addEventListener('click', () => {
+        localStorage.removeItem('github-last-check');
+        localStorage.removeItem('github-mensagens-vistas');
+        console.log('🗑️ Cache de notificações limpo!');
+        alert('Cache limpo. Notificações serão verificadas novamente.');
+      });
+      
+      document.body.appendChild(clearBtn);
+    }
+  });
   </script>
 
   <!-- Script da Splash Screen Refinada -->
