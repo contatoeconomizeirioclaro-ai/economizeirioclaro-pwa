@@ -73,12 +73,12 @@
       transform: translateY(0);
     }
     
-    /* Botão para GitHub Notifications (se necessário) */
-    #github-notification-btn {
+    /* Botão para Google Sheets Notifications */
+    #sheets-notification-btn {
       position: fixed;
       bottom: 70px;
       right: 20px;
-      background: #24292e;
+      background: #0F9D58;
       color: white;
       border: none;
       padding: 10px 16px;
@@ -124,38 +124,35 @@
 
   <script>
   // ============================================
-  // SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO FINAL
+  // SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO GOOGLE SHEETS
   // ============================================
 
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Economizei - Inicializando...');
+    console.log('🚀 Economizei - Inicializando Google Sheets System...');
     
     // ============================================
     // CONFIGURAÇÕES DO SISTEMA
     // ============================================
     
-    // CONFIG: Sistema de push notifications (desativado - precisa de backend)
+    // CONFIG: Sistema de push notifications (desativado)
     const USE_PUSH_NOTIFICATIONS = false;
     
-    // CONFIG: Sistema de notificações via GitHub (ATIVADO)
-    const GITHUB_NOTIFICATIONS = true;
-    const GITHUB_JSON_URL = 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/notificacoes.json';
+    // CONFIG: Sistema de notificações via Google Sheets (ATIVADO)
+    const GOOGLE_SHEETS_NOTIFICATIONS = true;
+    const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgRkzdvRw_Qjb_tMexnc49QXEAo4wdBAzA9spA_7PVQReYlH15GaVCTTjIBllU2IKZS0LEr-SBKk7b/pub?output=csv';
     
     // ============================================
     // REGISTRO DO SERVICE WORKER
     // ============================================
     
     if ('serviceWorker' in navigator) {
-      // SEMPRE usa sw.js (agora unificado)
-      const swToRegister = '/sw.js';
-      
-      navigator.serviceWorker.register(swToRegister)
+      navigator.serviceWorker.register('/sw.js')
         .then(registration => {
-          console.log(`✅ Service Worker registrado: ${swToRegister}`);
+          console.log('✅ Service Worker registrado: /sw.js');
           
-          // Inicializar sistema GitHub (sempre ativo)
-          if (GITHUB_NOTIFICATIONS) {
-            initGitHubNotificationSystem(registration);
+          // Inicializar sistema Google Sheets
+          if (GOOGLE_SHEETS_NOTIFICATIONS) {
+            initGoogleSheetsNotificationSystem(registration);
           }
           
           // Inicializar push apenas se configurado
@@ -164,17 +161,16 @@
           }
         })
         .catch(error => {
-          console.error(`❌ Falha no Service Worker:`, error);
-          // Tentar GitHub notifications mesmo sem SW
-          if (GITHUB_NOTIFICATIONS) {
-            initGitHubNotificationSystem();
+          console.error('❌ Falha no Service Worker:', error);
+          // Tentar Google Sheets mesmo sem SW
+          if (GOOGLE_SHEETS_NOTIFICATIONS) {
+            initGoogleSheetsNotificationSystem();
           }
         });
     } else {
       console.log('⚠️ Navegador não suporta Service Worker');
-      // Tentar GitHub notifications mesmo sem SW
-      if (GITHUB_NOTIFICATIONS) {
-        initGitHubNotificationSystem();
+      if (GOOGLE_SHEETS_NOTIFICATIONS) {
+        initGoogleSheetsNotificationSystem();
       }
     }
     
@@ -185,14 +181,14 @@
     }
     
     // ============================================
-    // SISTEMA DE NOTIFICAÇÕES VIA GITHUB (LOCAIS)
+    // SISTEMA DE NOTIFICAÇÕES VIA GOOGLE SHEETS
     // ============================================
     
-    function initGitHubNotificationSystem(registration = null) {
-      console.log('🐙 Inicializando sistema GitHub Notifications...');
+    function initGoogleSheetsNotificationSystem(registration = null) {
+      console.log('📊 Inicializando sistema Google Sheets Notifications...');
       
       // Verificar se já verificou hoje
-      const ultimaVerificacao = localStorage.getItem('github-last-check');
+      const ultimaVerificacao = localStorage.getItem('sheets-last-check');
       const hoje = new Date().toISOString().split('T')[0];
       
       if (ultimaVerificacao === hoje) {
@@ -203,39 +199,46 @@
       // Esperar 3 segundos após carregamento
       setTimeout(async () => {
         try {
-          await verificarNotificacoesGitHub(registration);
+          await verificarNotificacoesGoogleSheets(registration);
         } catch (erro) {
-          console.error('❌ Erro no sistema GitHub:', erro);
+          console.error('❌ Erro no sistema Google Sheets:', erro);
         }
       }, 3000);
     }
     
-    async function verificarNotificacoesGitHub(registration) {
-      console.log('🔍 Verificando notificações no GitHub...');
+    async function verificarNotificacoesGoogleSheets(registration) {
+      console.log('🔍 Verificando notificações no Google Sheets...');
       
       try {
-        // Buscar JSON do GitHub
-        const resposta = await fetch(`${GITHUB_JSON_URL}?t=${Date.now()}`);
+        // Buscar CSV do Google Sheets (com cache busting)
+        const resposta = await fetch(`${GOOGLE_SHEETS_URL}&t=${Date.now()}`);
         
         if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
         
-        const dados = await resposta.json();
+        const csvTexto = await resposta.text();
         
-        if (!dados.mensagens || !Array.isArray(dados.mensagens)) {
-          throw new Error('Formato inválido do JSON');
+        // Converter CSV para JSON
+        const mensagens = converterCSVparaJSON(csvTexto);
+        
+        console.log(`📦 ${mensagens.length} mensagem(ns) encontrada(s)`, mensagens);
+        
+        if (mensagens.length === 0) {
+          console.log('📭 Nenhuma mensagem na planilha');
+          localStorage.setItem('sheets-last-check', new Date().toISOString().split('T')[0]);
+          return;
         }
         
         // Mensagens já vistas
         const mensagensVistas = JSON.parse(
-          localStorage.getItem('github-mensagens-vistas') || '[]'
+          localStorage.getItem('sheets-mensagens-vistas') || '[]'
         );
         
         // Filtrar mensagens NÃO vistas
-        const novasMensagens = dados.mensagens.filter(msg => 
+        const novasMensagens = mensagens.filter(msg => 
           !mensagensVistas.includes(msg.id.toString())
         );
         
-        console.log(`📊 ${novasMensagens.length} nova(s) mensagem(ns)`);
+        console.log(`🆕 ${novasMensagens.length} nova(s) mensagem(ns)`);
         
         if (novasMensagens.length > 0) {
           // Ordenar por prioridade
@@ -249,10 +252,67 @@
         }
         
         // Atualizar última verificação
-        localStorage.setItem('github-last-check', hoje);
+        localStorage.setItem('sheets-last-check', new Date().toISOString().split('T')[0]);
         
       } catch (erro) {
-        console.error('❌ Erro ao verificar GitHub:', erro);
+        console.error('❌ Erro ao verificar Google Sheets:', erro);
+        // Tentar novamente em 1 hora
+        setTimeout(() => {
+          if (GOOGLE_SHEETS_NOTIFICATIONS) {
+            verificarNotificacoesGoogleSheets(registration);
+          }
+        }, 3600000);
+      }
+    }
+    
+    function converterCSVparaJSON(csv) {
+      try {
+        const linhas = csv.split('\n').filter(linha => linha.trim() !== '');
+        const resultado = [];
+        
+        if (linhas.length < 2) return resultado; // Precisa ter cabeçalho + dados
+        
+        // Pular cabeçalho (primeira linha) e processar dados
+        for (let i = 1; i < linhas.length; i++) {
+          const linha = linhas[i].trim();
+          if (!linha) continue;
+          
+          // Divisão inteligente de CSV (respeita vírgulas dentro de aspas)
+          const valores = [];
+          let dentroDeAspas = false;
+          let valorAtual = '';
+          
+          for (let char of linha) {
+            if (char === '"') {
+              dentroDeAspas = !dentroDeAspas;
+            } else if (char === ',' && !dentroDeAspas) {
+              valores.push(valorAtual.trim());
+              valorAtual = '';
+            } else {
+              valorAtual += char;
+            }
+          }
+          valores.push(valorAtual.trim()); // Último valor
+          
+          // Limpar aspas dos valores
+          const valoresLimpos = valores.map(v => v.replace(/^"|"$/g, ''));
+          
+          if (valoresLimpos.length >= 6) {
+            resultado.push({
+              id: parseInt(valoresLimpos[0]) || i,
+              titulo: valoresLimpos[1] || '📱 Economizei',
+              mensagem: valoresLimpos[2] || 'Nova oferta disponível',
+              data: valoresLimpos[3] || new Date().toISOString().split('T')[0],
+              url: valoresLimpos[4] || 'https://www.economizeirioclaro.com.br',
+              prioridade: valoresLimpos[5]?.toLowerCase() || 'media'
+            });
+          }
+        }
+        
+        return resultado;
+      } catch (error) {
+        console.error('❌ Erro ao converter CSV:', error);
+        return [];
       }
     }
     
@@ -337,7 +397,7 @@
       
       // Manter apenas últimas 50 mensagens
       const limitadas = todasVistas.slice(-50);
-      localStorage.setItem('github-mensagens-vistas', JSON.stringify(limitadas));
+      localStorage.setItem('sheets-mensagens-vistas', JSON.stringify(limitadas));
     }
     
     // ============================================
@@ -480,7 +540,7 @@
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.ready.then(reg => {
             reg.showNotification('📱 Economizei - Teste', {
-              body: 'Teste do sistema de notificações!',
+              body: 'Teste do sistema Google Sheets!',
               icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
               data: {
                 url: 'https://www.economizeirioclaro.com.br',
@@ -511,22 +571,22 @@
       `;
       
       clearBtn.addEventListener('click', () => {
-        localStorage.removeItem('github-last-check');
-        localStorage.removeItem('github-mensagens-vistas');
-        console.log('✅ Cache limpo! Recarregue a página.');
+        localStorage.removeItem('sheets-last-check');
+        localStorage.removeItem('sheets-mensagens-vistas');
+        console.log('✅ Cache Google Sheets limpo! Recarregue a página.');
         alert('Cache limpo. Recarregue a página para testar.');
       });
       
       document.body.appendChild(clearBtn);
       
-      // Botão para testar GitHub diretamente
-      const githubBtn = document.createElement('button');
-      githubBtn.innerHTML = '🐙 Testar GitHub';
-      githubBtn.style.cssText = `
+      // Botão para testar Google Sheets diretamente
+      const sheetsBtn = document.createElement('button');
+      sheetsBtn.innerHTML = '📊 Testar Sheets';
+      sheetsBtn.style.cssText = `
         position: fixed;
         bottom: 150px;
         left: 20px;
-        background: #24292e;
+        background: #0F9D58;
         color: white;
         border: none;
         padding: 10px 15px;
@@ -536,21 +596,52 @@
         z-index: 10000;
       `;
       
-      githubBtn.addEventListener('click', () => {
-        console.log('🧪 Testando conexão GitHub...');
-        fetch(GITHUB_JSON_URL)
-          .then(r => r.json())
-          .then(data => {
-            console.log('✅ GitHub OK:', data);
-            alert('GitHub OK! ' + data.mensagens.length + ' mensagens');
+      sheetsBtn.addEventListener('click', () => {
+        console.log('🧪 Testando conexão Google Sheets...');
+        fetch(GOOGLE_SHEETS_URL)
+          .then(r => r.text())
+          .then(csv => {
+            const mensagens = converterCSVparaJSON(csv);
+            console.log('✅ Google Sheets OK:', mensagens);
+            alert('Google Sheets OK! ' + mensagens.length + ' mensagens');
           })
           .catch(err => {
-            console.error('❌ GitHub erro:', err);
-            alert('Erro GitHub: ' + err.message);
+            console.error('❌ Google Sheets erro:', err);
+            alert('Erro Google Sheets: ' + err.message);
           });
       });
       
-      document.body.appendChild(githubBtn);
+      document.body.appendChild(sheetsBtn);
+      
+      // Botão para forçar verificação
+      const forceBtn = document.createElement('button');
+      forceBtn.innerHTML = '🔄 Forçar Check';
+      forceBtn.style.cssText = `
+        position: fixed;
+        bottom: 190px;
+        left: 20px;
+        background: #4285F4;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        z-index: 10000;
+      `;
+      
+      forceBtn.addEventListener('click', () => {
+        console.log('🔄 Forçando verificação...');
+        localStorage.removeItem('sheets-last-check');
+        if (window.verificarNotificacoesGoogleSheets) {
+          navigator.serviceWorker.ready.then(reg => {
+            verificarNotificacoesGoogleSheets(reg);
+            alert('Verificação forçada iniciada!');
+          });
+        }
+      });
+      
+      document.body.appendChild(forceBtn);
     }
   });
   </script>
