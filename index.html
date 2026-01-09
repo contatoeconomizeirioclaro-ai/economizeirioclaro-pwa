@@ -44,6 +44,34 @@
     body:not(.splash-complete) > iframe {
       display: none !important;
     }
+    
+    /* Botão de Notificações (estilo) */
+    #push-notification-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #f4c430;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(244, 196, 48, 0.3);
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+    
+    #push-notification-btn:hover {
+      background: #e0b429;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(244, 196, 48, 0.4);
+    }
+    
+    #push-notification-btn:active {
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -79,56 +107,241 @@
   </iframe>
 
   <script>
-    // Registrar Service Worker (seu código atual)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+    // ============================================
+    // SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO ESTÁVEL
+    // ============================================
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 Economizei - Inicializando...');
+      
+      // CONFIGURAÇÃO: Mudar para TRUE para ativar push notifications
+      const USE_PUSH_NOTIFICATIONS = false;
+      
+      // Registrar Service Worker apropriado
+      if ('serviceWorker' in navigator) {
+        const swToRegister = USE_PUSH_NOTIFICATIONS ? '/sw-push.js' : '/sw.js';
+        
+        navigator.serviceWorker.register(swToRegister)
           .then(registration => {
-            console.log('✅ Service Worker registrado:', registration.scope);
+            console.log(`✅ Service Worker registrado: ${swToRegister}`, registration.scope);
+            
+            // Se for push notifications, inicializar sistema
+            if (USE_PUSH_NOTIFICATIONS) {
+              initPushNotificationSystem(registration);
+            }
           })
           .catch(error => {
-            console.log('❌ Falha no Service Worker:', error);
+            console.error(`❌ Falha no Service Worker (${swToRegister}):`, error);
+            
+            // Fallback para sw.js se sw-push.js falhar
+            if (USE_PUSH_NOTIFICATIONS && swToRegister === '/sw-push.js') {
+              console.log('🔄 Tentando fallback para sw.js...');
+              navigator.serviceWorker.register('/sw.js')
+                .then(fallbackReg => {
+                  console.log('✅ Fallback sw.js registrado');
+                })
+                .catch(fallbackError => {
+                  console.error('❌ Fallback também falhou:', fallbackError);
+                });
+            }
           });
-      });
-    }
-    
-    // Verificar se já está rodando como app
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('📱 Economizei rodando como app instalado');
-      document.documentElement.setAttribute('data-app-mode', 'installed');
-    }
+      } else {
+        console.log('⚠️ Navegador não suporta Service Worker');
+      }
+      
+      // Verificar se está rodando como app instalado
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('📱 Economizei rodando como app instalado');
+        document.documentElement.setAttribute('data-app-mode', 'installed');
+      }
+      
+      // ============================================
+      // SISTEMA DE PUSH NOTIFICATIONS
+      // ============================================
+      
+      function initPushNotificationSystem(registration) {
+        console.log('🔔 Inicializando sistema de push notifications...');
+        
+        // Criar botão de ativação
+        const notificationBtn = document.createElement('button');
+        notificationBtn.id = 'push-notification-btn';
+        notificationBtn.innerHTML = '🔔 Ativar Notificações';
+        
+        // Estado inicial
+        const isAlreadyEnabled = localStorage.getItem('economizei-push-enabled') === 'true';
+        const permissionStatus = Notification.permission;
+        
+        console.log('📊 Status:', {
+          enabled: isAlreadyEnabled,
+          permission: permissionStatus
+        });
+        
+        // Mostrar botão apenas se:
+        // 1. Não está já ativado
+        // 2. Permissão não foi negada
+        // 3. Permissão não foi concedida ainda
+        if (!isAlreadyEnabled && permissionStatus === 'default') {
+          notificationBtn.style.display = 'block';
+        } else {
+          notificationBtn.style.display = 'none';
+          
+          if (permissionStatus === 'granted') {
+            console.log('✅ Notificações já ativadas anteriormente');
+          } else if (permissionStatus === 'denied') {
+            console.log('❌ Permissão para notificações foi negada');
+          }
+        }
+        
+        // Evento de clique no botão
+        notificationBtn.addEventListener('click', async function() {
+          console.log('🖱️ Botão de notificações clicado');
+          
+          try {
+            // Mudar texto do botão
+            notificationBtn.innerHTML = '⏳ Solicitando permissão...';
+            notificationBtn.disabled = true;
+            
+            // Solicitar permissão
+            const permission = await Notification.requestPermission();
+            console.log('🔓 Resultado da permissão:', permission);
+            
+            if (permission === 'granted') {
+              // Tentar inscrever para push notifications
+              try {
+                // Chave pública VAPID de teste (substituir por real depois)
+                const vapidPublicKey = 'BKYvJLwQ9gQcKJvK7vL8cT7HJkLp09gFcVbN7mKjL9hTqW8zXcVbN7mKjL9hTqW8zXc';
+                
+                const subscription = await registration.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                });
+                
+                // Salvar no localStorage
+                localStorage.setItem('economizei-push-enabled', 'true');
+                localStorage.setItem('economizei-push-subscription', JSON.stringify(subscription));
+                
+                // Atualizar botão
+                notificationBtn.innerHTML = '✅ Notificações Ativadas!';
+                notificationBtn.style.background = '#4CAF50';
+                
+                console.log('🎉 Inscrição para push bem-sucedida:', subscription);
+                
+                // Esconder botão após 2 segundos
+                setTimeout(() => {
+                  notificationBtn.style.display = 'none';
+                }, 2000);
+                
+              } catch (subscribeError) {
+                console.error('❌ Erro na inscrição push:', subscribeError);
+                
+                // Mesmo sem push, marcar como ativado para notificações locais
+                localStorage.setItem('economizei-push-enabled', 'true');
+                
+                notificationBtn.innerHTML = '✅ Notificações Locais Ativadas';
+                notificationBtn.style.background = '#4CAF50';
+                
+                setTimeout(() => {
+                  notificationBtn.style.display = 'none';
+                }, 2000);
+              }
+              
+            } else if (permission === 'denied') {
+              // Permissão negada
+              notificationBtn.innerHTML = '❌ Permissão Negada';
+              notificationBtn.style.background = '#f44336';
+              
+              setTimeout(() => {
+                notificationBtn.innerHTML = '🔔 Ativar Notificações';
+                notificationBtn.style.background = '#f4c430';
+                notificationBtn.disabled = false;
+              }, 3000);
+              
+            } else {
+              // Permissão ignorada/dismissed
+              notificationBtn.innerHTML = '🔔 Ativar Notificações';
+              notificationBtn.disabled = false;
+            }
+            
+          } catch (error) {
+            console.error('💥 Erro no processo de ativação:', error);
+            
+            notificationBtn.innerHTML = '❌ Erro - Tente Novamente';
+            notificationBtn.style.background = '#f44336';
+            
+            setTimeout(() => {
+              notificationBtn.innerHTML = '🔔 Ativar Notificações';
+              notificationBtn.style.background = '#f4c430';
+              notificationBtn.disabled = false;
+            }, 3000);
+          }
+        });
+        
+        // Adicionar botão ao body
+        document.body.appendChild(notificationBtn);
+        
+        // Função auxiliar para converter chave VAPID
+        function urlBase64ToUint8Array(base64String) {
+          const padding = '='.repeat((4 - base64String.length % 4) % 4);
+          const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+          
+          const rawData = window.atob(base64);
+          const outputArray = new Uint8Array(rawData.length);
+          
+          for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+          }
+          return outputArray;
+        }
+      }
+      
+      // ============================================
+      // TESTE MANUAL DE NOTIFICAÇÃO (para desenvolvimento)
+      // ============================================
+      
+      // Adicionar botão de teste se estiver em desenvolvimento
+      if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+        const testBtn = document.createElement('button');
+        testBtn.innerHTML = '🔧 Testar Notificação';
+        testBtn.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          left: 20px;
+          background: #9C27B0;
+          color: white;
+          border: none;
+          padding: 10px 15px;
+          border-radius: 20px;
+          font-size: 12px;
+          cursor: pointer;
+          z-index: 10000;
+        `;
+        
+        testBtn.addEventListener('click', () => {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification('📱 Economizei - Teste', {
+                body: 'Esta é uma notificação de teste!',
+                icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+                badge: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+                vibrate: [200, 100, 200],
+                data: {
+                  url: 'https://www.economizeirioclaro.com.br',
+                  test: true
+                }
+              });
+            });
+          }
+        });
+        
+        document.body.appendChild(testBtn);
+      }
+    });
   </script>
 
   <!-- Script da Splash Screen Refinada -->
   <script src="/splash.js"></script>
 
-<script>
-// Código simplificado DIRETO no HTML
-if ('serviceWorker' in navigator) {
-  // Botão de ativação
-  const btn = document.createElement('button');
-  btn.innerHTML = '🔔 Ativar Notificações';
-  btn.style.cssText = `
-    position:fixed; bottom:20px; right:20px;
-    background:#f4c430; color:white; border:none;
-    padding:12px 20px; border-radius:30px;
-    font-weight:bold; cursor:pointer; z-index:10000;
-  `;
-  
-  btn.onclick = async () => {
-    try {
-      const reg = await navigator.serviceWorker.register('/sw-push.js');
-      await Notification.requestPermission();
-      btn.innerHTML = '✅ Ativado!';
-      btn.style.background = '#4CAF50';
-    } catch(err) {
-      btn.innerHTML = '❌ Erro';
-    }
-  };
-  
-  document.body.appendChild(btn);
-}
-</script>
-  
 </body>
 </html>
