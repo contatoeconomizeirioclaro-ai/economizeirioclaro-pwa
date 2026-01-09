@@ -7,12 +7,11 @@
 
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#f4c430">
-  
-  <!-- CSS da Splash Screen Refinada -->
+
+  <!-- Splash -->
   <link rel="stylesheet" href="/splash.css">
 
   <style>
-    /* Estilos principais do wrapper */
     html, body {
       margin: 0;
       padding: 0;
@@ -21,633 +20,155 @@
       overflow: hidden;
       background: #ffffff;
     }
-    
-    /* Iframe - escondido inicialmente */
+
     iframe {
       border: none;
       width: 100%;
       height: 100%;
-      display: none; /* Escondido até splash terminar */
+      display: none;
       visibility: hidden;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity .3s ease;
     }
-    
-    /* Quando splash terminar, mostrar iframe */
+
     body.splash-complete iframe {
       display: block;
       visibility: visible;
       opacity: 1;
     }
-    
-    /* Estado inicial - garantir que tudo esteja escondido */
+
     body:not(.splash-complete) > iframe {
       display: none !important;
     }
-    
-    /* Botão de Notificações (estilo) */
-    #push-notification-btn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #f4c430;
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 30px;
-      font-weight: bold;
-      cursor: pointer;
-      z-index: 10000;
-      box-shadow: 0 4px 12px rgba(244, 196, 48, 0.3);
-      transition: all 0.3s;
-      font-size: 14px;
-    }
-    
-    #push-notification-btn:hover {
-      background: #e0b429;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(244, 196, 48, 0.4);
-    }
-    
-    #push-notification-btn:active {
-      transform: translateY(0);
-    }
-    
-    /* Botão para Google Sheets Notifications */
-    #sheets-notification-btn {
-      position: fixed;
-      bottom: 70px;
-      right: 20px;
-      background: #0F9D58;
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      cursor: pointer;
-      z-index: 10000;
-      display: none;
-    }
   </style>
 </head>
+
 <body>
 
-  <!-- Splash Screen Refinada -->
-  <!-- Aparece apenas no app instalado -->
-  <div id="splash-screen">
-    <div class="splash-container">
-      <!-- PIN aumentado para 150px -->
-      <img id="splash-pin" 
-           src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png" 
-           alt="Ícone Economizei"
-           width="200"
-           height="200">
-      
-      <!-- TEXTO mantido 250px -->
-      <!-- Espaço de 5px entre pin e texto -->
-      <img id="splash-text" 
-           src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png" 
-           alt="Economizei Rio Claro"
-           width="250"
-           height="90">
-    </div>
+<!-- SPLASH (somente app instalado) -->
+<div id="splash-screen">
+  <div class="splash-container">
+    <img id="splash-pin"
+      src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png"
+      width="200" height="200" alt="Economizei">
+
+    <img id="splash-text"
+      src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png"
+      width="250" height="90" alt="Economizei Rio Claro">
   </div>
+</div>
 
-  <!-- Seu site Blogger no iframe -->
-  <iframe
-    src="https://www.economizeirioclaro.com.br/?app=1"
-    loading="eager"
-    referrerpolicy="no-referrer-when-downgrade"
-    allow="fullscreen"
-    title="Economizei Rio Claro - Ofertas e Promoções">
-  </iframe>
+<!-- BLOGGER -->
+<iframe
+  src="https://www.economizeirioclaro.com.br/?app=1"
+  loading="eager"
+  referrerpolicy="no-referrer-when-downgrade"
+  allow="fullscreen">
+</iframe>
 
-  <script>
-  // ============================================
-  // SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO GOOGLE SHEETS
-  // ============================================
+<script>
+/* =====================================================
+   ECONOMIZEI — PASSO 1
+   NOTIFICAÇÕES INTERNAS (GOOGLE SHEETS)
+   ===================================================== */
 
-  document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Economizei - Inicializando Google Sheets System...');
-    
-    // ============================================
-    // CONFIGURAÇÕES DO SISTEMA
-    // ============================================
-    
-    // CONFIG: Sistema de push notifications (desativado)
-    const USE_PUSH_NOTIFICATIONS = false;
-    
-    // CONFIG: Sistema de notificações via Google Sheets (ATIVADO)
-    const GOOGLE_SHEETS_NOTIFICATIONS = true;
-    const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgRkzdvRw_Qjb_tMexnc49QXEAo4wdBAzA9spA_7PVQReYlH15GaVCTTjIBllU2IKZS0LEr-SBKk7b/pub?output=csv';
-    
-    // ============================================
-    // REGISTRO DO SERVICE WORKER
-    // ============================================
-    
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('✅ Service Worker registrado: /sw.js');
-          
-          // Inicializar sistema Google Sheets
-          if (GOOGLE_SHEETS_NOTIFICATIONS) {
-            initGoogleSheetsNotificationSystem(registration);
-          }
-          
-          // Inicializar push apenas se configurado
-          if (USE_PUSH_NOTIFICATIONS) {
-            initPushNotificationSystem(registration);
-          }
-        })
-        .catch(error => {
-          console.error('❌ Falha no Service Worker:', error);
-          // Tentar Google Sheets mesmo sem SW
-          if (GOOGLE_SHEETS_NOTIFICATIONS) {
-            initGoogleSheetsNotificationSystem();
-          }
-        });
-    } else {
-      console.log('⚠️ Navegador não suporta Service Worker');
-      if (GOOGLE_SHEETS_NOTIFICATIONS) {
-        initGoogleSheetsNotificationSystem();
-      }
-    }
-    
-    // Verificar se está rodando como app instalado
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('📱 Economizei rodando como app instalado');
-      document.documentElement.setAttribute('data-app-mode', 'installed');
-    }
-    
-    // ============================================
-    // SISTEMA DE NOTIFICAÇÕES VIA GOOGLE SHEETS
-    // ============================================
-    
-    function initGoogleSheetsNotificationSystem(registration = null) {
-      console.log('📊 Inicializando sistema Google Sheets Notifications...');
-      
-      // Verificar se já verificou hoje
-      const ultimaVerificacao = localStorage.getItem('sheets-last-check');
-      const hoje = new Date().toISOString().split('T')[0];
-      
-      if (ultimaVerificacao === hoje) {
-        console.log('📅 Já verificou notificações hoje');
+document.addEventListener('DOMContentLoaded', () => {
+
+  const SHEETS_URL =
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgRkzdvRw_Qjb_tMexnc49QXEAo4wdBAzA9spA_7PVQReYlH15GaVCTTjIBllU2IKZS0LEr-SBKk7b/pub?output=csv';
+
+  // Registrar Service Worker (offline + notificações locais)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('✅ SW registrado'))
+      .catch(err => console.error('❌ SW erro', err));
+  }
+
+  // Evitar múltiplas verificações no mesmo dia
+  const hoje = new Date().toISOString().split('T')[0];
+  if (localStorage.getItem('sheets-last-check') === hoje) return;
+
+  setTimeout(verificarSheets, 3000);
+
+  async function verificarSheets() {
+    try {
+      const res = await fetch(SHEETS_URL + '&t=' + Date.now());
+      const csv = await res.text();
+      const mensagens = csvToJson(csv);
+
+      const vistas = JSON.parse(
+        localStorage.getItem('sheets-vistas') || '[]'
+      );
+
+      const novas = mensagens.filter(m =>
+        !vistas.includes(String(m.id))
+      );
+
+      if (!novas.length) {
+        localStorage.setItem('sheets-last-check', hoje);
         return;
       }
-      
-      // Esperar 3 segundos após carregamento
-      setTimeout(async () => {
-        try {
-          await verificarNotificacoesGoogleSheets(registration);
-        } catch (erro) {
-          console.error('❌ Erro no sistema Google Sheets:', erro);
-        }
-      }, 3000);
-    }
-    
-    async function verificarNotificacoesGoogleSheets(registration) {
-      console.log('🔍 Verificando notificações no Google Sheets...');
-      
-      try {
-        // Buscar CSV do Google Sheets (com cache busting)
-        const resposta = await fetch(`${GOOGLE_SHEETS_URL}&t=${Date.now()}`);
-        
-        if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-        
-        const csvTexto = await resposta.text();
-        
-        // Converter CSV para JSON
-        const mensagens = converterCSVparaJSON(csvTexto);
-        
-        console.log(`📦 ${mensagens.length} mensagem(ns) encontrada(s)`, mensagens);
-        
-        if (mensagens.length === 0) {
-          console.log('📭 Nenhuma mensagem na planilha');
-          localStorage.setItem('sheets-last-check', new Date().toISOString().split('T')[0]);
-          return;
-        }
-        
-        // Mensagens já vistas
-        const mensagensVistas = JSON.parse(
-          localStorage.getItem('sheets-mensagens-vistas') || '[]'
-        );
-        
-        // Filtrar mensagens NÃO vistas
-        const novasMensagens = mensagens.filter(msg => 
-          !mensagensVistas.includes(msg.id.toString())
-        );
-        
-        console.log(`🆕 ${novasMensagens.length} nova(s) mensagem(ns)`);
-        
-        if (novasMensagens.length > 0) {
-          // Ordenar por prioridade
-          const novasOrdenadas = ordenarPorPrioridade(novasMensagens);
-          
-          // Mostrar notificações
-          mostrarNotificacoesEmSequencia(novasOrdenadas, registration);
-          
-          // Salvar como vistas
-          salvarMensagensVistas(novasOrdenadas, mensagensVistas);
-        }
-        
-        // Atualizar última verificação
-        localStorage.setItem('sheets-last-check', new Date().toISOString().split('T')[0]);
-        
-      } catch (erro) {
-        console.error('❌ Erro ao verificar Google Sheets:', erro);
-        // Tentar novamente em 1 hora
-        setTimeout(() => {
-          if (GOOGLE_SHEETS_NOTIFICATIONS) {
-            verificarNotificacoesGoogleSheets(registration);
-          }
-        }, 3600000);
-      }
-    }
-    
-    function converterCSVparaJSON(csv) {
-      try {
-        const linhas = csv.split('\n').filter(linha => linha.trim() !== '');
-        const resultado = [];
-        
-        if (linhas.length < 2) return resultado; // Precisa ter cabeçalho + dados
-        
-        // Pular cabeçalho (primeira linha) e processar dados
-        for (let i = 1; i < linhas.length; i++) {
-          const linha = linhas[i].trim();
-          if (!linha) continue;
-          
-          // Divisão inteligente de CSV (respeita vírgulas dentro de aspas)
-          const valores = [];
-          let dentroDeAspas = false;
-          let valorAtual = '';
-          
-          for (let char of linha) {
-            if (char === '"') {
-              dentroDeAspas = !dentroDeAspas;
-            } else if (char === ',' && !dentroDeAspas) {
-              valores.push(valorAtual.trim());
-              valorAtual = '';
-            } else {
-              valorAtual += char;
-            }
-          }
-          valores.push(valorAtual.trim()); // Último valor
-          
-          // Limpar aspas dos valores
-          const valoresLimpos = valores.map(v => v.replace(/^"|"$/g, ''));
-          
-          if (valoresLimpos.length >= 6) {
-            resultado.push({
-              id: parseInt(valoresLimpos[0]) || i,
-              titulo: valoresLimpos[1] || '📱 Economizei',
-              mensagem: valoresLimpos[2] || 'Nova oferta disponível',
-              data: valoresLimpos[3] || new Date().toISOString().split('T')[0],
-              url: valoresLimpos[4] || 'https://www.economizeirioclaro.com.br',
-              prioridade: valoresLimpos[5]?.toLowerCase() || 'media'
-            });
-          }
-        }
-        
-        return resultado;
-      } catch (error) {
-        console.error('❌ Erro ao converter CSV:', error);
-        return [];
-      }
-    }
-    
-    function ordenarPorPrioridade(mensagens) {
-      const prioridades = { alta: 3, media: 2, baixa: 1 };
-      return [...mensagens].sort((a, b) => {
-        return (prioridades[b.prioridade] || 1) - (prioridades[a.prioridade] || 1);
-      });
-    }
-    
-    function mostrarNotificacoesEmSequencia(mensagens, registration) {
-      let delay = 0;
-      
-      mensagens.forEach((msg) => {
-        setTimeout(() => {
-          mostrarNotificacaoLocal(msg, registration);
-        }, delay);
-        
-        delay += 3000; // 3 segundos entre notificações
-      });
-    }
-    
-    function mostrarNotificacaoLocal(mensagem, registration) {
-      if (!('Notification' in window)) {
-        console.log('⚠️ Navegador não suporta notificações');
-        return;
-      }
-      
-      // Método PREFERIDO: enviar mensagem para Service Worker
-      if (registration && registration.active) {
-        registration.active.postMessage({
-          type: 'SHOW_NOTIFICATION',
-          title: mensagem.titulo || '📱 Economizei',
-          body: mensagem.mensagem || 'Nova oferta disponível!',
-          icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-          url: mensagem.url || 'https://www.economizeirioclaro.com.br',
-          id: mensagem.id
-        });
-        console.log('📨 Mensagem enviada para SW');
-        return;
-      }
-      
-      // Fallback: notificação direta do navegador
-      if (Notification.permission === 'granted') {
-        mostrarNotificacaoFallback(mensagem);
-      } else if (Notification.permission === 'default') {
-        // Solicitar permissão silenciosamente
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
-            mostrarNotificacaoFallback(mensagem);
-          }
-        });
-      }
-    }
-    
-    function mostrarNotificacaoFallback(mensagem) {
-      try {
-        const notificacao = new Notification(
-          mensagem.titulo || '📱 Economizei', 
-          {
-            body: mensagem.mensagem || 'Nova oferta disponível!',
-            icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-            data: {
-              url: mensagem.url || 'https://www.economizeirioclaro.com.br',
-              id: mensagem.id
-            }
-          }
-        );
-        
-        notificacao.onclick = () => {
-          window.open(mensagem.url || 'https://www.economizeirioclaro.com.br', '_blank');
-          notificacao.close();
-        };
-      } catch (err) {
-        console.error('❌ Erro ao criar notificação:', err);
-      }
-    }
-    
-    function salvarMensagensVistas(novasMensagens, mensagensVistasAnteriores) {
-      const novosIds = novasMensagens.map(msg => msg.id.toString());
-      const todasVistas = [...mensagensVistasAnteriores, ...novosIds];
-      
-      // Manter apenas últimas 50 mensagens
-      const limitadas = todasVistas.slice(-50);
-      localStorage.setItem('sheets-mensagens-vistas', JSON.stringify(limitadas));
-    }
-    
-    // ============================================
-    // SISTEMA DE PUSH NOTIFICATIONS (OPCIONAL)
-    // ============================================
-    
-    function initPushNotificationSystem(registration) {
-      console.log('🔔 Inicializando sistema de push notifications...');
-      
-      // Criar botão de ativação
-      const notificationBtn = document.createElement('button');
-      notificationBtn.id = 'push-notification-btn';
-      notificationBtn.innerHTML = '🔔 Ativar Notificações Push';
-      
-      // Estado inicial
-      const isAlreadyEnabled = localStorage.getItem('economizei-push-enabled') === 'true';
-      const permissionStatus = Notification.permission;
-      
-      // Mostrar botão apenas se necessário
-      if (!isAlreadyEnabled && permissionStatus === 'default') {
-        notificationBtn.style.display = 'block';
-      } else {
-        notificationBtn.style.display = 'none';
-      }
-      
-      // Evento de clique no botão
-      notificationBtn.addEventListener('click', async function() {
-        console.log('🖱️ Botão de push clicado');
-        
-        try {
-          notificationBtn.innerHTML = '⏳ Solicitando permissão...';
-          notificationBtn.disabled = true;
-          
-          const permission = await Notification.requestPermission();
-          
-          if (permission === 'granted') {
-            try {
-              // Chave pública VAPID de teste
-              const vapidPublicKey = 'BKYvJLwQ9gQcKJvK7vL8cT7HJkLp09gFcVbN7mKjL9hTqW8zXcVbN7mKjL9hTqW8zXc';
-              
-              const subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-              });
-              
-              localStorage.setItem('economizei-push-enabled', 'true');
-              localStorage.setItem('economizei-push-subscription', JSON.stringify(subscription));
-              
-              notificationBtn.innerHTML = '✅ Push Ativadas!';
-              notificationBtn.style.background = '#4CAF50';
-              
-              setTimeout(() => {
-                notificationBtn.style.display = 'none';
-              }, 2000);
-              
-            } catch (subscribeError) {
-              console.error('❌ Erro na inscrição push:', subscribeError);
-              
-              localStorage.setItem('economizei-push-enabled', 'true');
-              notificationBtn.innerHTML = '✅ Notificações Locais';
-              notificationBtn.style.background = '#4CAF50';
-              
-              setTimeout(() => {
-                notificationBtn.style.display = 'none';
-              }, 2000);
-            }
-            
-          } else if (permission === 'denied') {
-            notificationBtn.innerHTML = '❌ Permissão Negada';
-            notificationBtn.style.background = '#f44336';
-            
-            setTimeout(() => {
-              notificationBtn.innerHTML = '🔔 Ativar Push';
-              notificationBtn.style.background = '#f4c430';
-              notificationBtn.disabled = false;
-            }, 3000);
-            
-          } else {
-            notificationBtn.innerHTML = '🔔 Ativar Push';
-            notificationBtn.disabled = false;
-          }
-          
-        } catch (error) {
-          console.error('💥 Erro no processo de ativação:', error);
-          
-          notificationBtn.innerHTML = '❌ Erro - Tente Novamente';
-          notificationBtn.style.background = '#f44336';
-          
-          setTimeout(() => {
-            notificationBtn.innerHTML = '🔔 Ativar Push';
-            notificationBtn.style.background = '#f4c430';
-            notificationBtn.disabled = false;
-          }, 3000);
-        }
-      });
-      
-      // Adicionar botão ao body
-      document.body.appendChild(notificationBtn);
-      
-      // Função auxiliar para converter chave VAPID
-      function urlBase64ToUint8Array(base64String) {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding)
-          .replace(/\-/g, '+')
-          .replace(/_/g, '/');
-        
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        
-        for (let i = 0; i < rawData.length; ++i) {
-          outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-      }
-    }
-    
-    // ============================================
-    // TESTE E DEBUG (apenas em desenvolvimento)
-    // ============================================
-    
-    // Adicionar botão de teste se estiver em desenvolvimento
-    if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-      const testBtn = document.createElement('button');
-      testBtn.innerHTML = '🔧 Testar Notificação';
-      testBtn.style.cssText = `
-        position: fixed;
-        bottom: 70px;
-        left: 20px;
-        background: #9C27B0;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 20px;
-        font-size: 12px;
-        cursor: pointer;
-        z-index: 10000;
-      `;
-      
-      testBtn.addEventListener('click', () => {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification('📱 Economizei - Teste', {
-              body: 'Teste do sistema Google Sheets!',
-              icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
-              data: {
-                url: 'https://www.economizeirioclaro.com.br',
-                test: true
-              }
-            });
-          });
-        }
-      });
-      
-      document.body.appendChild(testBtn);
-      
-      // Botão para limpar cache
-      const clearBtn = document.createElement('button');
-      clearBtn.innerHTML = '🗑️ Limpar Cache';
-      clearBtn.style.cssText = `
-        position: fixed;
-        bottom: 110px;
-        left: 20px;
-        background: #FF9800;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 20px;
-        font-size: 12px;
-        cursor: pointer;
-        z-index: 10000;
-      `;
-      
-      clearBtn.addEventListener('click', () => {
-        localStorage.removeItem('sheets-last-check');
-        localStorage.removeItem('sheets-mensagens-vistas');
-        console.log('✅ Cache Google Sheets limpo! Recarregue a página.');
-        alert('Cache limpo. Recarregue a página para testar.');
-      });
-      
-      document.body.appendChild(clearBtn);
-      
-      // Botão para testar Google Sheets diretamente
-      const sheetsBtn = document.createElement('button');
-      sheetsBtn.innerHTML = '📊 Testar Sheets';
-      sheetsBtn.style.cssText = `
-        position: fixed;
-        bottom: 150px;
-        left: 20px;
-        background: #0F9D58;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 20px;
-        font-size: 12px;
-        cursor: pointer;
-        z-index: 10000;
-      `;
-      
-      sheetsBtn.addEventListener('click', () => {
-        console.log('🧪 Testando conexão Google Sheets...');
-        fetch(GOOGLE_SHEETS_URL)
-          .then(r => r.text())
-          .then(csv => {
-            const mensagens = converterCSVparaJSON(csv);
-            console.log('✅ Google Sheets OK:', mensagens);
-            alert('Google Sheets OK! ' + mensagens.length + ' mensagens');
-          })
-          .catch(err => {
-            console.error('❌ Google Sheets erro:', err);
-            alert('Erro Google Sheets: ' + err.message);
-          });
-      });
-      
-      document.body.appendChild(sheetsBtn);
-      
-      // Botão para forçar verificação
-      const forceBtn = document.createElement('button');
-      forceBtn.innerHTML = '🔄 Forçar Check';
-      forceBtn.style.cssText = `
-        position: fixed;
-        bottom: 190px;
-        left: 20px;
-        background: #4285F4;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 20px;
-        font-size: 12px;
-        cursor: pointer;
-        z-index: 10000;
-      `;
-      
-      forceBtn.addEventListener('click', () => {
-        console.log('🔄 Forçando verificação...');
-        localStorage.removeItem('sheets-last-check');
-        if (window.verificarNotificacoesGoogleSheets) {
-          navigator.serviceWorker.ready.then(reg => {
-            verificarNotificacoesGoogleSheets(reg);
-            alert('Verificação forçada iniciada!');
-          });
-        }
-      });
-      
-      document.body.appendChild(forceBtn);
-    }
-  });
-  </script>
 
-  <!-- Script da Splash Screen Refinada -->
-  <script src="/splash.js"></script>
+      novas
+        .sort((a,b) => prioridade(b.prioridade) - prioridade(a.prioridade))
+        .forEach((msg, i) => {
+          setTimeout(() => notificar(msg), i * 3000);
+        });
 
+      const ids = novas.map(n => String(n.id));
+      localStorage.setItem(
+        'sheets-vistas',
+        JSON.stringify([...vistas, ...ids].slice(-50))
+      );
+
+      localStorage.setItem('sheets-last-check', hoje);
+
+    } catch (e) {
+      console.error('❌ Sheets erro', e);
+    }
+  }
+
+  function notificar(msg) {
+    if (!('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.ready.then(reg => {
+      reg.active?.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title: msg.titulo,
+        body: msg.mensagem,
+        url: msg.url,
+        id: msg.id
+      });
+    });
+  }
+
+  function prioridade(p) {
+    return { alta: 3, media: 2, baixa: 1 }[p] || 1;
+  }
+
+  function csvToJson(csv) {
+    const linhas = csv.split('\n').filter(l => l.trim());
+    const out = [];
+
+    for (let i = 1; i < linhas.length; i++) {
+      const c = linhas[i].split(',');
+      if (c.length < 6) continue;
+
+      out.push({
+        id: c[0],
+        titulo: c[1],
+        mensagem: c[2],
+        data: c[3],
+        url: c[4],
+        prioridade: c[5]?.toLowerCase()
+      });
+    }
+    return out;
+  }
+
+});
+</script>
+
+<script src="/splash.js"></script>
 </body>
 </html>
