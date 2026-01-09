@@ -41,9 +41,7 @@
       display: none !important;
     }
 
-    /* =====================================================
-       MODAL NATIVO — PUSH NOTIFICATIONS
-       ===================================================== */
+    /* ================= MODAL PUSH ================= */
     .push-overlay {
       position: fixed;
       inset: 0;
@@ -65,22 +63,6 @@
       animation: fadeUp .35s ease;
     }
 
-    .push-modal img {
-      width: 64px;
-      margin-bottom: 12px;
-    }
-
-    .push-modal h3 {
-      margin: 0 0 8px;
-      font-size: 18px;
-    }
-
-    .push-modal p {
-      font-size: 14px;
-      color: #555;
-      margin-bottom: 18px;
-    }
-
     .push-actions {
       display: flex;
       gap: 10px;
@@ -95,15 +77,8 @@
       cursor: pointer;
     }
 
-    .push-allow {
-      background: #f4c430;
-      color: #000;
-    }
-
-    .push-deny {
-      background: #eee;
-      color: #555;
-    }
+    .push-allow { background: #f4c430; }
+    .push-deny  { background: #eee; }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(20px); }
@@ -112,19 +87,17 @@
   </style>
 
   <!-- OneSignal SDK -->
-<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
-
-<script>
-  window.OneSignal = window.OneSignal || [];
-  OneSignal.push(function() {
-    OneSignal.init({
-      appId: "fb033efd-5769-4c84-b550-0191fa5ff056",
-      notifyButton: { enable: false }, // usamos SEU modal
-      allowLocalhostAsSecureOrigin: true
+  <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
+  <script>
+    window.OneSignal = window.OneSignal || [];
+    OneSignal.push(function () {
+      OneSignal.init({
+        appId: "fb033efd-5769-4c84-b550-0191fa5ff056",
+        notifyButton: { enable: false },
+        allowLocalhostAsSecureOrigin: true
+      });
     });
-  });
-</script>
-
+  </script>
 </head>
 
 <body>
@@ -132,32 +105,19 @@
 <!-- SPLASH -->
 <div id="splash-screen">
   <div class="splash-container">
-    <img id="splash-pin"
-      src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png"
-      width="200" height="200" alt="Economizei">
-
-    <img id="splash-text"
-      src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png"
-      width="250" height="90" alt="Economizei Rio Claro">
+    <img src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png" width="200">
+    <img src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png" width="250">
   </div>
 </div>
 
-<!-- BLOGGER -->
-<iframe
-  src="https://www.economizeirioclaro.com.br/?app=1"
-  loading="eager"
-  referrerpolicy="no-referrer-when-downgrade"
-  allow="fullscreen">
-</iframe>
+<!-- BLOG -->
+<iframe src="https://www.economizeirioclaro.com.br/?app=1"></iframe>
 
-<!-- =====================================================
-     MODAL NATIVO (HTML)
-     ===================================================== -->
+<!-- MODAL PUSH -->
 <div class="push-overlay" id="pushOverlay">
   <div class="push-modal">
-    <img src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png">
     <h3>Receber notificações?</h3>
-    <p>Fique por dentro das melhores ofertas de Rio Claro em tempo real.</p>
+    <p>Ofertas e avisos em tempo real.</p>
     <div class="push-actions">
       <button class="push-deny" id="pushNo">Agora não</button>
       <button class="push-allow" id="pushYes">Ativar</button>
@@ -166,51 +126,99 @@
 </div>
 
 <script>
-/* =====================================================
-   MODAL NATIVO — CONTROLE
-   ===================================================== */
-
+/* ================= MODAL ================= */
 document.addEventListener('DOMContentLoaded', () => {
 
   const isPWA =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true;
+    matchMedia('(display-mode: standalone)').matches ||
+    navigator.standalone;
 
   if (!isPWA) return;
-
   if (Notification.permission !== 'default') return;
   if (localStorage.getItem('push-modal-dismissed')) return;
 
   setTimeout(() => {
-    document.getElementById('pushOverlay').style.display = 'flex';
+    pushOverlay.style.display = 'flex';
   }, 1500);
 
-  document.getElementById('pushNo').onclick = () => {
+  pushNo.onclick = () => {
     localStorage.setItem('push-modal-dismissed', 'true');
-    document.getElementById('pushOverlay').remove();
+    pushOverlay.remove();
   };
 
-  document.getElementById('pushYes').onclick = () => {
-  OneSignal.push(async function() {
-    try {
-      const granted = await OneSignal.showNativePrompt();
-      console.log('🔔 OneSignal permission:', granted);
-    } catch (e) {
-      console.error('❌ OneSignal erro:', e);
-    }
-  });
-
-  localStorage.setItem('push-modal-dismissed', 'true');
-  document.getElementById('pushOverlay').remove();
-};
-
+  pushYes.onclick = () => {
+    OneSignal.push(() => OneSignal.showNativePrompt());
+    localStorage.setItem('push-modal-dismissed', 'true');
+    pushOverlay.remove();
+  };
+});
 </script>
 
-<!-- =====================================================
-     SEU SCRIPT ORIGINAL (GOOGLE SHEETS)
-     ===================================================== -->
 <script>
-/* (mantido exatamente como você enviou) */
+/* =====================================================
+   GOOGLE SHEETS + ONESIGNAL (HÍBRIDO)
+   ===================================================== */
+
+const SHEETS_URL =
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgRkzdvRw_Qjb_tMexnc49QXEAo4wdBAzA9spA_7PVQReYlH15GaVCTTjIBllU2IKZS0LEr-SBKk7b/pub?output=csv';
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+
+setTimeout(verificarSheets, 3000);
+
+async function verificarSheets() {
+  const csv = await (await fetch(SHEETS_URL + '&t=' + Date.now())).text();
+  const mensagens = csvToJson(csv);
+  mensagens.forEach(enviarNotificacao);
+}
+
+function enviarNotificacao(msg) {
+  const pushAtivo =
+    window.OneSignal &&
+    Notification.permission === 'granted';
+
+  if (msg.push && pushAtivo) {
+    enviarViaOneSignal(msg);
+  } else {
+    notificarLocal(msg);
+  }
+}
+
+function enviarViaOneSignal(msg) {
+  OneSignal.push(() => {
+    OneSignal.sendSelfNotification(
+      msg.titulo,
+      msg.mensagem,
+      msg.url
+    );
+  });
+}
+
+function notificarLocal(msg) {
+  navigator.serviceWorker.ready.then(reg => {
+    reg.active?.postMessage({
+      type: 'SHOW_NOTIFICATION',
+      title: msg.titulo,
+      body: msg.mensagem,
+      url: msg.url
+    });
+  });
+}
+
+function csvToJson(csv) {
+  const linhas = csv.split('\n').slice(1);
+  return linhas.map(l => {
+    const c = l.split(',');
+    return {
+      titulo: c[1],
+      mensagem: c[2],
+      url: c[4],
+      push: (c[6] || '').toLowerCase() === 'sim'
+    };
+  });
+}
 </script>
 
 <script src="/splash.js"></script>
