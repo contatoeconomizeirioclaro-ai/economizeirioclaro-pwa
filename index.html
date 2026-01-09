@@ -7,8 +7,6 @@
 
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#f4c430">
-
-  <!-- Splash -->
   <link rel="stylesheet" href="/splash.css">
 
   <style>
@@ -18,7 +16,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #ffffff;
+      background: #fff;
     }
 
     iframe {
@@ -26,22 +24,16 @@
       width: 100%;
       height: 100%;
       display: none;
-      visibility: hidden;
       opacity: 0;
       transition: opacity .3s ease;
     }
 
     body.splash-complete iframe {
       display: block;
-      visibility: visible;
       opacity: 1;
     }
 
-    body:not(.splash-complete) > iframe {
-      display: none !important;
-    }
-
-    /* ================= MODAL PUSH ================= */
+    /* MODAL PUSH */
     .push-overlay {
       position: fixed;
       inset: 0;
@@ -86,11 +78,11 @@
     }
   </style>
 
-  <!-- OneSignal SDK -->
+  <!-- OneSignal -->
   <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
   <script>
     window.OneSignal = window.OneSignal || [];
-    OneSignal.push(function () {
+    OneSignal.push(() => {
       OneSignal.init({
         appId: "fb033efd-5769-4c84-b550-0191fa5ff056",
         notifyButton: { enable: false },
@@ -126,19 +118,19 @@
 </div>
 
 <script>
-/* ================= MODAL ================= */
+/* ========= MODAL PUSH ========= */
 document.addEventListener('DOMContentLoaded', () => {
 
   const isPWA =
     matchMedia('(display-mode: standalone)').matches ||
-    navigator.standalone;
+    navigator.standalone === true;
 
   if (!isPWA) return;
   if (Notification.permission !== 'default') return;
   if (localStorage.getItem('push-modal-dismissed')) return;
 
   setTimeout(() => {
-    pushOverlay.style.display = 'flex';
+    document.getElementById('pushOverlay').style.display = 'flex';
   }, 1500);
 
   pushNo.onclick = () => {
@@ -155,9 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script>
-/* =====================================================
-   GOOGLE SHEETS + ONESIGNAL (HÍBRIDO)
-   ===================================================== */
+/* ========= GOOGLE SHEETS + AGENDAMENTO ========= */
 
 const SHEETS_URL =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgRkzdvRw_Qjb_tMexnc49QXEAo4wdBAzA9spA_7PVQReYlH15GaVCTTjIBllU2IKZS0LEr-SBKk7b/pub?output=csv';
@@ -169,52 +159,75 @@ if ('serviceWorker' in navigator) {
 setTimeout(verificarSheets, 3000);
 
 async function verificarSheets() {
-  const csv = await (await fetch(SHEETS_URL + '&t=' + Date.now())).text();
-  const mensagens = csvToJson(csv);
-  mensagens.forEach(enviarNotificacao);
+  try {
+    const csv = await (await fetch(SHEETS_URL + '&t=' + Date.now())).text();
+    const mensagens = csvToJson(csv);
+    mensagens.forEach(msg => {
+      if (podeDisparar(msg)) enviar(msg);
+    });
+  } catch (e) {
+    console.error('Erro Sheets:', e);
+  }
 }
 
-function enviarNotificacao(msg) {
+function podeDisparar(msg) {
+  const agora = new Date();
+  const dataHora = new Date(`${msg.data}T${msg.hora || '00:00'}`);
+
+  if (agora < dataHora) return false;
+
+  const enviados = JSON.parse(
+    localStorage.getItem('notificacoes-enviadas') || '[]'
+  );
+
+  if (enviados.includes(msg.id)) return false;
+
+  enviados.push(msg.id);
+  localStorage.setItem(
+    'notificacoes-enviadas',
+    JSON.stringify(enviados)
+  );
+
+  return true;
+}
+
+function enviar(msg) {
   const pushAtivo =
     window.OneSignal &&
     Notification.permission === 'granted';
 
   if (msg.push && pushAtivo) {
-    enviarViaOneSignal(msg);
+    OneSignal.push(() => {
+      OneSignal.sendSelfNotification(
+        msg.titulo,
+        msg.mensagem,
+        msg.url
+      );
+    });
   } else {
-    notificarLocal(msg);
+    navigator.serviceWorker.ready.then(reg => {
+      reg.active?.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title: msg.titulo,
+        body: msg.mensagem,
+        url: msg.url,
+        id: msg.id
+      });
+    });
   }
 }
 
-function enviarViaOneSignal(msg) {
-  OneSignal.push(() => {
-    OneSignal.sendSelfNotification(
-      msg.titulo,
-      msg.mensagem,
-      msg.url
-    );
-  });
-}
-
-function notificarLocal(msg) {
-  navigator.serviceWorker.ready.then(reg => {
-    reg.active?.postMessage({
-      type: 'SHOW_NOTIFICATION',
-      title: msg.titulo,
-      body: msg.mensagem,
-      url: msg.url
-    });
-  });
-}
-
 function csvToJson(csv) {
-  const linhas = csv.split('\n').slice(1);
+  const linhas = csv.split('\n').slice(1).filter(l => l.trim());
   return linhas.map(l => {
     const c = l.split(',');
     return {
+      id: c[0],
       titulo: c[1],
       mensagem: c[2],
-      url: c[4],
+      data: c[3],
+      hora: c[4],
+      url: c[5],
       push: (c[6] || '').toLowerCase() === 'sim'
     };
   });
