@@ -102,5 +102,33 @@
   <!-- Script da Splash Screen Refinada -->
   <script src="/splash.js"></script>
 
+<script>
+// Código simplificado DIRETO no HTML
+if ('serviceWorker' in navigator) {
+  // Botão de ativação
+  const btn = document.createElement('button');
+  btn.innerHTML = '🔔 Ativar Notificações';
+  btn.style.cssText = `
+    position:fixed; bottom:20px; right:20px;
+    background:#f4c430; color:white; border:none;
+    padding:12px 20px; border-radius:30px;
+    font-weight:bold; cursor:pointer; z-index:10000;
+  `;
+  
+  btn.onclick = async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw-push.js');
+      await Notification.requestPermission();
+      btn.innerHTML = '✅ Ativado!';
+      btn.style.background = '#4CAF50';
+    } catch(err) {
+      btn.innerHTML = '❌ Erro';
+    }
+  };
+  
+  document.body.appendChild(btn);
+}
+</script>
+  
 </body>
 </html>
