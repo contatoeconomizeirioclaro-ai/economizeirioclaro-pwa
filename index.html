@@ -110,6 +110,21 @@
       to   { opacity: 1; transform: translateY(0); }
     }
   </style>
+
+  <!-- OneSignal SDK -->
+<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
+
+<script>
+  window.OneSignal = window.OneSignal || [];
+  OneSignal.push(function() {
+    OneSignal.init({
+      appId: "fb033efd-5769-4c84-b550-0191fa5ff056",
+      notifyButton: { enable: false }, // usamos SEU modal
+      allowLocalhostAsSecureOrigin: true
+    });
+  });
+</script>
+
 </head>
 
 <body>
@@ -175,15 +190,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('pushOverlay').remove();
   };
 
-  document.getElementById('pushYes').onclick = async () => {
-    const permission = await Notification.requestPermission();
-    localStorage.setItem('push-modal-dismissed', 'true');
-    document.getElementById('pushOverlay').remove();
+  document.getElementById('pushYes').onclick = () => {
+  OneSignal.push(async function() {
+    try {
+      const granted = await OneSignal.showNativePrompt();
+      console.log('🔔 OneSignal permission:', granted);
+    } catch (e) {
+      console.error('❌ OneSignal erro:', e);
+    }
+  });
 
-    console.log('🔔 Permissão:', permission);
-  };
+  localStorage.setItem('push-modal-dismissed', 'true');
+  document.getElementById('pushOverlay').remove();
+};
 
-});
 </script>
 
 <!-- =====================================================
