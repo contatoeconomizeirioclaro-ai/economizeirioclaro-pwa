@@ -116,6 +116,13 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // CONFIGURAÇÃO: Mudar para TRUE para ativar push notifications
   const USE_PUSH_NOTIFICATIONS = true; // ← MUDADO DE true PARA false
+  // ============================================
+// SISTEMA DE NOTIFICAÇÕES VIA GITHUB
+// ============================================
+
+const GITHUB_NOTIFICATIONS = true;
+const GITHUB_JSON_URL = 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/notificacoes.json';
+const CHECK_INTERVAL_DAYS = 1; // Verificar a cada 1 dia
   
   // Registrar Service Worker apropriado
   if ('serviceWorker' in navigator) {
@@ -129,6 +136,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (USE_PUSH_NOTIFICATIONS) {
           initPushNotificationSystem(registration);
         }
+        if (GITHUB_NOTIFICATIONS) {
+  initGitHubNotificationSystem();
+}
       })
       .catch(error => {
         console.error(`❌ Falha no Service Worker (${swToRegister}):`, error);
@@ -159,7 +169,137 @@ document.addEventListener('DOMContentLoaded', function() {
       // ============================================
       // SISTEMA DE PUSH NOTIFICATIONS
       // ============================================
+
+// ============================================
+// SISTEMA DE NOTIFICAÇÕES VIA GITHUB (LOCAIS)
+// ============================================
+
+function initGitHubNotificationSystem() {
+  console.log('🐙 Inicializando sistema GitHub Notifications...');
+  
+  // Verificar se já verificou hoje
+  const ultimaVerificacao = localStorage.getItem('github-last-check');
+  const hoje = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+  
+  if (ultimaVerificacao === hoje) {
+    console.log('📅 Já verificou notificações hoje');
+    return;
+  }
+  
+  // Esperar 3 segundos para melhor experiência do usuário
+  setTimeout(async () => {
+    try {
+      await verificarNotificacoesGitHub();
+    } catch (erro) {
+      console.error('❌ Erro no sistema GitHub:', erro);
+    }
+  }, 3000);
+}
+
+async function verificarNotificacoesGitHub() {
+  console.log('🔍 Verificando notificações no GitHub...');
+  
+  try {
+    // Buscar JSON do GitHub com cache-busting
+    const resposta = await fetch(`${GITHUB_JSON_URL}?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    
+    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+    
+    const dados = await resposta.json();
+    
+    if (!dados.mensagens || !Array.isArray(dados.mensagens)) {
+      throw new Error('Formato inválido do JSON');
+    }
+    
+    // Mensagens já vistas
+    const mensagensVistas = JSON.parse(
+      localStorage.getItem('github-mensagens-vistas') || '[]'
+    );
+    
+    // Filtrar mensagens NÃO vistas
+    const novasMensagens = dados.mensagens.filter(msg => 
+      !mensagensVistas.includes(msg.id.toString())
+    );
+    
+    console.log(`📊 ${novasMensagens.length} nova(s) mensagem(ns)`);
+    
+    if (novasMensagens.length > 0) {
+      // Ordenar por prioridade
+      const novasOrdenadas = ordenarPorPrioridade(novasMensagens);
       
+      // Mostrar notificações
+      mostrarNotificacoesEmSequencia(novasOrdenadas);
+      
+      // Salvar como vistas
+      salvarMensagensVistas(novasOrdenadas, mensagensVistas);
+    }
+    
+    // Atualizar última verificação
+    localStorage.setItem('github-last-check', new Date().toISOString().split('T')[0]);
+    
+  } catch (erro) {
+    console.error('❌ Erro ao verificar GitHub:', erro);
+  }
+}
+
+function ordenarPorPrioridade(mensagens) {
+  const prioridades = { alta: 3, media: 2, baixa: 1 };
+  return [...mensagens].sort((a, b) => {
+    return (prioridades[b.prioridade] || 1) - (prioridades[a.prioridade] || 1);
+  });
+}
+
+function mostrarNotificacoesEmSequencia(mensagens) {
+  mensagens.forEach((msg, index) => {
+    // Espaçar as notificações (2 segundos entre elas)
+    setTimeout(() => {
+      mostrarNotificacaoLocal(msg);
+    }, index * 2000);
+  });
+}
+
+function mostrarNotificacaoLocal(mensagem) {
+  if (!('Notification' in window)) return;
+  
+  // Criar notificação local (não precisa de permissão se for do próprio site)
+  const options = {
+    body: mensagem.mensagem,
+    icon: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+    badge: 'https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png',
+    tag: `economizei-${mensagem.id}`, // Evita duplicatas
+    data: {
+      url: mensagem.url || 'https://www.economizeirioclaro.com.br',
+      id: mensagem.id
+    }
+  };
+  
+  // Usar service worker se disponível
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(mensagem.titulo, options);
+    });
+  } else {
+    // Fallback: notificação do navegador
+    const notificacao = new Notification(mensagem.titulo, options);
+    
+    notificacao.onclick = () => {
+      window.open(mensagem.url || 'https://www.economizeirioclaro.com.br', '_blank');
+    };
+  }
+}
+
+function salvarMensagensVistas(novasMensagens, mensagensVistasAnteriores) {
+  const novosIds = novasMensagens.map(msg => msg.id.toString());
+  const todasVistas = [...mensagensVistasAnteriores, ...novosIds];
+  
+  // Manter apenas últimas 50 mensagens (evitar armazenamento excessivo)
+  const limitadas = todasVistas.slice(-50);
+  
+  localStorage.setItem('github-mensagens-vistas', JSON.stringify(limitadas));
+}
+  
       function initPushNotificationSystem(registration) {
         console.log('🔔 Inicializando sistema de push notifications...');
         
