@@ -1,0 +1,21 @@
+{
+  "ultima_atualizacao": "2024-01-15",
+  "mensagens": [
+    {
+      "id": 1,
+      "titulo": "🎉 Oferta Especial!",
+      "mensagem": "Desconto de 20% na Padaria São João",
+      "data": "2024-01-15",
+      "url": "https://www.economizeirioclaro.com.br?oferta=1",
+      "prioridade": "alta"
+    },
+    {
+      "id": 2,
+      "titulo": "💡 Dica do Dia",
+      "mensagem": "Compare preços antes de comprar",
+      "data": "2024-01-15",
+      "url": "https://www.economizeirioclaro.com.br",
+      "prioridade": "media"
+    }
+  ]
+}
