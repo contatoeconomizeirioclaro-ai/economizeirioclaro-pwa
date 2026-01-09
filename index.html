@@ -107,47 +107,48 @@
   </iframe>
 
   <script>
-    // ============================================
-    // SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO ESTÁVEL
-    // ============================================
+  // ============================================
+// SISTEMA DE NOTIFICAÇÕES ECONOMIZEI - VERSÃO ESTÁVEL
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Economizei - Inicializando...');
+  
+  // CONFIGURAÇÃO: Mudar para TRUE para ativar push notifications
+  const USE_PUSH_NOTIFICATIONS = false; // ← MUDADO DE true PARA false
+  
+  // Registrar Service Worker apropriado
+  if ('serviceWorker' in navigator) {
+    const swToRegister = USE_PUSH_NOTIFICATIONS ? '/sw-push.js' : '/sw.js';
     
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 Economizei - Inicializando...');
-      
-      // CONFIGURAÇÃO: Mudar para TRUE para ativar push notifications
-      const USE_PUSH_NOTIFICATIONS = true;
-      
-      // Registrar Service Worker apropriado
-      if ('serviceWorker' in navigator) {
-        const swToRegister = USE_PUSH_NOTIFICATIONS ? '/sw-push.js' : '/sw.js';
+    navigator.serviceWorker.register(swToRegister)
+      .then(registration => {
+        console.log(`✅ Service Worker registrado: ${swToRegister}`, registration.scope);
         
-        navigator.serviceWorker.register(swToRegister)
-          .then(registration => {
-            console.log(`✅ Service Worker registrado: ${swToRegister}`, registration.scope);
-            
-            // Se for push notifications, inicializar sistema
-            if (USE_PUSH_NOTIFICATIONS) {
-              initPushNotificationSystem(registration);
-            }
-          })
-          .catch(error => {
-            console.error(`❌ Falha no Service Worker (${swToRegister}):`, error);
-            
-            // Fallback para sw.js se sw-push.js falhar
-            if (USE_PUSH_NOTIFICATIONS && swToRegister === '/sw-push.js') {
-              console.log('🔄 Tentando fallback para sw.js...');
-              navigator.serviceWorker.register('/sw.js')
-                .then(fallbackReg => {
-                  console.log('✅ Fallback sw.js registrado');
-                })
-                .catch(fallbackError => {
-                  console.error('❌ Fallback também falhou:', fallbackError);
-                });
-            }
-          });
-      } else {
-        console.log('⚠️ Navegador não suporta Service Worker');
-      }
+        // Se for push notifications, inicializar sistema
+        if (USE_PUSH_NOTIFICATIONS) {
+          initPushNotificationSystem(registration);
+        }
+      })
+      .catch(error => {
+        console.error(`❌ Falha no Service Worker (${swToRegister}):`, error);
+        
+        // Fallback para sw.js se sw-push.js falhar
+        if (USE_PUSH_NOTIFICATIONS && swToRegister === '/sw-push.js') {
+          console.log('🔄 Tentando fallback para sw.js...');
+          navigator.serviceWorker.register('/sw.js')
+            .then(fallbackReg => {
+              console.log('✅ Fallback sw.js registrado');
+            })
+            .catch(fallbackError => {
+              console.error('❌ Fallback também falhou:', fallbackError);
+            });
+        }
+      });
+  } else {
+    console.log('⚠️ Navegador não suporta Service Worker');
+  }
+  
       
       // Verificar se está rodando como app instalado
       if (window.matchMedia('(display-mode: standalone)').matches) {
