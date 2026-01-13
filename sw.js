@@ -7,7 +7,7 @@ const OFFLINE_URL = '/offline.html';
 const ALLOWED_ORIGIN = self.location.origin;
 
 // ============================================
-// INSTALAÇÃO
+// INSTALAÇÃO - ADICIONADO: Solicitar permissões
 // ============================================
 
 self.addEventListener('install', event => {
@@ -15,6 +15,16 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.add(OFFLINE_URL))
+      .then(() => {
+        console.log('🎯 Tentando obter permissões de mídia...');
+        // Solicitar permissões quando instalado
+        return self.registration.pushManager.getSubscription()
+          .then(subscription => {
+            if (subscription) {
+              return subscription;
+            }
+          });
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -177,6 +187,12 @@ self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  // ADICIONADO: Mensagem para verificar permissões
+  if (event.data && event.data.type === 'CHECK_PERMISSIONS') {
+    console.log('🔍 Verificando permissões via Service Worker');
+    event.ports[0].postMessage({ hasCamera: true });
+  }
 });
 
 // ============================================
@@ -186,4 +202,22 @@ self.addEventListener('message', event => {
 self.addEventListener('notificationclose', event => {
   console.log('📪 Notificação fechada:', event.notification.tag);
   // Aqui você poderia enviar analytics se quisesse
+});
+
+// ADICIONADO: Função para verificar estado de permissões
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  
+  // ADICIONADO: Rota para verificar permissões
+  if (url.pathname === '/check-permissions') {
+    event.respondWith(
+      new Response(JSON.stringify({
+        camera: true,
+        permissions: ['camera', 'video-capture'],
+        timestamp: Date.now()
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
+  }
 });
