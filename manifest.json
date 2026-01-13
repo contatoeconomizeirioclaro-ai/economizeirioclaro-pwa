@@ -12,6 +12,16 @@
   "orientation": "portrait",
   "lang": "pt-BR",
   "categories": ["shopping", "business", "lifestyle"],
+  
+  "permissions": [
+    "camera",
+    "video-capture"
+  ],
+  
+  "optional_permissions": [
+    "camera"
+  ],
+  
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -25,6 +35,7 @@
       "purpose": "any maskable"
     }
   ],
+  
   "screenshots": [
     {
       "src": "/screenshots/home.png",
