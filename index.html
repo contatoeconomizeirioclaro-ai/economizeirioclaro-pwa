@@ -81,36 +81,82 @@
       from { opacity: 0; transform: translateY(20px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+
+    /* Estilo para app nativo */
+    .native-app-content {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+    }
   </style>
 
-  <!-- OneSignal -->
-  <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
+  <!-- OneSignal - CARREGAMENTO CONDICIONAL -->
   <script>
-    window.OneSignal = window.OneSignal || [];
-    OneSignal.push(() => {
-      OneSignal.init({
-        appId: "fb033efd-5769-4c84-b550-0191fa5ff056",
-        notifyButton: { enable: false },
-        allowLocalhostAsSecureOrigin: true
+    // DETECÇÃO DE CONTEXTO (executa antes de tudo)
+    const urlParams = new URLSearchParams(window.location.search);
+    const isNativeApp = urlParams.get('source') === 'android_native';
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  navigator.standalone === true;
+    
+    // Variável global para outros scripts
+    window.APP_CONTEXT = {
+      isNativeApp: isNativeApp,
+      isPWA: isPWA && !isNativeApp, // Se for app nativo, não considerar como PWA
+      isBrowser: !isNativeApp && !isPWA,
+      isStandalone: isPWA
+    };
+    
+    console.log('APP_CONTEXT detectado:', window.APP_CONTEXT);
+    
+    // Se for app nativo, NÃO carrega o OneSignal
+    if (!isNativeApp) {
+      // Carrega o script do OneSignal apenas para PWA/Browser
+      var script = document.createElement('script');
+      script.src = 'https://cdn.onesignal.com/sdks/OneSignalSDK.js';
+      script.async = true;
+      document.head.appendChild(script);
+      
+      // Inicialização normal do OneSignal
+      window.OneSignal = window.OneSignal || [];
+      OneSignal.push(() => {
+        OneSignal.init({
+          appId: "fb033efd-5769-4c84-b550-0191fa5ff056",
+          notifyButton: { enable: false },
+          allowLocalhostAsSecureOrigin: true
+        });
       });
-    });
+    } else {
+      // Mock do OneSignal para app nativo (evita erros)
+      window.OneSignal = {
+        push: function(fn) { 
+          if (fn && typeof fn === 'function') setTimeout(fn, 0); 
+        },
+        init: function() { console.log('OneSignal desativado para app nativo'); },
+        showNativePrompt: function() { return Promise.resolve(); }
+      };
+    }
   </script>
 </head>
 
 <body>
 
-<!-- SPLASH -->
-<div id="splash-screen">
+<!-- SPLASH - OCULTO PARA APP NATIVO -->
+<div id="splash-screen" style="display: <?php echo (isset($_GET['source']) && $_GET['source'] === 'android_native') ? 'none' : 'block'; ?>;">
   <div class="splash-container">
     <img src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png" width="200">
     <img src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png" width="250">
   </div>
 </div>
 
-<!-- BLOG -->
-<iframe src="https://www.economizeirioclaro.com.br/?app=1"></iframe>
+<!-- CONTEÚDO PRINCIPAL DINÂMICO -->
+<div id="content-container">
+  <iframe id="main-iframe" src="https://www.economizeirioclaro.com.br/?app=1"></iframe>
+</div>
 
-<!-- MODAL PUSH -->
+<!-- MODAL PUSH - OCULTO PARA APP NATIVO -->
 <div class="push-overlay" id="pushOverlay">
   <div class="push-modal">
     <h3>Receber notificações?</h3>
@@ -123,13 +169,58 @@
 </div>
 
 <script>
-/* ========= MODAL PUSH ========= */
+/* ========= INICIALIZAÇÃO POR CONTEXTO ========= */
+document.addEventListener('DOMContentLoaded', function() {
+  const context = window.APP_CONTEXT;
+  
+  // APP NATIVO: Redireciona para versão otimizada SEM iframe
+  if (context.isNativeApp) {
+    console.log('📱 Modo App Nativo ativado');
+    
+    // Cria URL otimizada para app nativo
+    const optimizedUrl = new URL('https://www.economizeirioclaro.com.br/');
+    optimizedUrl.searchParams.set('app', '1');
+    optimizedUrl.searchParams.set('native_app', 'true');
+    optimizedUrl.searchParams.set('no_third_party', 'true');
+    optimizedUrl.searchParams.set('platform', 'android_native');
+    
+    // Remove o iframe existente
+    const iframe = document.getElementById('main-iframe');
+    if (iframe) iframe.remove();
+    
+    // Cria um novo iframe com URL otimizada (ou poderia fazer redirect direto)
+    const newIframe = document.createElement('iframe');
+    newIframe.id = 'native-iframe';
+    newIframe.src = optimizedUrl.toString();
+    newIframe.style.cssText = 'width:100%;height:100%;border:none;display:block;opacity:1;';
+    document.getElementById('content-container').appendChild(newIframe);
+    
+    // Oculta a splash imediatamente (app já tem splash nativa)
+    document.getElementById('splash-screen').style.display = 'none';
+    document.body.classList.add('splash-complete');
+    
+    return; // Interrompe execução do resto do código para app nativo
+  }
+  
+  // PWA NO NAVEGADOR: Comportamento padrão
+  if (context.isPWA) {
+    console.log('🌐 Modo PWA ativado');
+    // Mantém o comportamento atual
+  }
+  
+  // NAVEGADOR NORMAL
+  if (context.isBrowser) {
+    console.log('🖥️ Modo Navegador normal');
+  }
+});
+
+/* ========= MODAL PUSH (apenas para PWA) ========= */
 document.addEventListener('DOMContentLoaded', () => {
+  // Não mostra modal push para app nativo
+  if (window.APP_CONTEXT.isNativeApp) return;
 
-  const isPWA =
-    matchMedia('(display-mode: standalone)').matches ||
-    navigator.standalone === true;
-
+  const isPWA = window.APP_CONTEXT.isPWA;
+  
   if (!isPWA) return;
   if (Notification.permission !== 'default') return;
   if (localStorage.getItem('push-modal-dismissed')) return;
@@ -138,30 +229,48 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('pushOverlay').style.display = 'flex';
   }, 1500);
 
-  pushNo.onclick = () => {
+  document.getElementById('pushNo').onclick = () => {
     localStorage.setItem('push-modal-dismissed', 'true');
-    pushOverlay.remove();
+    document.getElementById('pushOverlay').remove();
   };
 
-  pushYes.onclick = () => {
-    OneSignal.push(() => OneSignal.showNativePrompt());
+  document.getElementById('pushYes').onclick = () => {
+    if (window.OneSignal && window.OneSignal.showNativePrompt) {
+      OneSignal.push(() => OneSignal.showNativePrompt());
+    }
     localStorage.setItem('push-modal-dismissed', 'true');
-    pushOverlay.remove();
+    document.getElementById('pushOverlay').remove();
   };
 });
-</script>
 
-<script>
-/* ========= GOOGLE SHEETS + AGENDAMENTO ========= */
-
-const SHEETS_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgRkzdvRw_Qjb_tMexnc49QXEAo4wdBAzA9spA_7PVQReYlH15GaVCTTjIBllU2IKZS0LEr-SBKk7b/pub?output=csv';
-
+/* ========= SERVICE WORKER REGISTRATION ========= */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
+  // App Nativo: NÃO registra service worker de notificações
+  if (window.APP_CONTEXT.isNativeApp) {
+    console.log('App Nativo: Service Worker de notificações DESATIVADO');
+    
+    // Opcional: Registrar um service worker MOCK apenas para cache (se quiser)
+    /*
+    navigator.serviceWorker.register('/sw-cache-only.js')
+      .then(reg => console.log('Service Worker de cache registrado:', reg))
+      .catch(err => console.log('Falha no registro do SW de cache:', err));
+    */
+  } 
+  // PWA: Registra service worker completo
+  else if (window.APP_CONTEXT.isPWA) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registrado para PWA:', reg))
+      .catch(err => console.log('Falha no registro do SW:', err));
+  }
 }
 
-setTimeout(verificarSheets, 3000);
+/* ========= GOOGLE SHEETS + AGENDAMENTO ========= */
+const SHEETS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgRkzdvRw_Qjb_tMexnc49QXEAo4wdBAzA9spA_7PVQReYlH15GaVCTTjIBllU2IKZS0LEr-SBKk7b/pub?output=csv';
+
+// App Nativo: NÃO executa agendamento de notificações (já tem nativo)
+if (!window.APP_CONTEXT.isNativeApp) {
+  setTimeout(verificarSheets, 3000);
+}
 
 async function verificarSheets() {
   try {
@@ -197,9 +306,10 @@ function podeDisparar(msg) {
 }
 
 function enviar(msg) {
-  const pushAtivo =
-    window.OneSignal &&
-    Notification.permission === 'granted';
+  // App Nativo: não envia notificações web
+  if (window.APP_CONTEXT.isNativeApp) return;
+
+  const pushAtivo = window.OneSignal && Notification.permission === 'granted';
 
   if (msg.push && pushAtivo) {
     OneSignal.push(() => {
