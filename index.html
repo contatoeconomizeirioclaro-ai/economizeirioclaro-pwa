@@ -12,8 +12,8 @@
       const isNativeApp = urlParams.get('source') === 'android_native';
       
       if (isNativeApp) {
-        // URL FINAL DO SITE PRINCIPAL - SEM IFRAME
-      const finalUrl = new URL('https://app.economizeirioclaro.com.br/');
+        // URL FINAL DO SITE PRINCIPAL - SUBDOMÍNIO APP (OTIMIZADO)
+        const finalUrl = new URL('https://app.economizeirioclaro.com.br/');
         
         // PARÂMETROS OBRIGATÓRIOS
         finalUrl.searchParams.set('app', '1');
@@ -23,17 +23,17 @@
         finalUrl.searchParams.set('native_app', 'true');
         finalUrl.searchParams.set('platform', 'android_native');
         finalUrl.searchParams.set('app_optimized', 'true');
+        finalUrl.searchParams.set('source', 'android_native');
         
         console.log('🔄 Redirecionando app nativo para:', finalUrl.toString());
         
-        // REDIRECIONAMENTO TOTAL - NÃO USA history.replaceState
+        // REDIRECIONAMENTO TOTAL
         window.location.href = finalUrl.toString();
       }
     })();
   </script>
   
   <style>
-    /* ESTILO APENAS PARA FALLBACK (se JS desabilitado) */
     body {
       margin: 0;
       padding: 20px;
@@ -49,25 +49,22 @@
 </head>
 
 <body>
-  <!-- APENAS FALLBACK SE REDIRECIONAMENTO FALHAR -->
   <div class="loading">
     <p>Redirecionando para Economizei Rio Claro...</p>
-    <p>Se não redirecionar automaticamente, <a href="https://www.economizeirioclaro.com.br/?app=1&m=1">clique aqui</a>.</p>
+    <p>Se não redirecionar automaticamente, <a href="https://app.economizeirioclaro.com.br/?app=1&m=1&source=pwa">clique aqui</a>.</p>
   </div>
 
   <script>
-    // FALLBACK: se não redirecionou em 3 segundos, faz manualmente
+    // FALLBACK: se não redirecionou em 3 segundos
     setTimeout(function() {
       if (!window.location.search.includes('source=android_native')) {
-        // Para PWA normal no navegador
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                             window.navigator.standalone === true;
         
         if (isStandalone) {
-          // Comportamento PWA normal com iframe
           document.body.innerHTML = `
             <iframe 
-              src="https://www.economizeirioclaro.com.br/?app=1" 
+              src="https://app.economizeirioclaro.com.br/?app=1&source=pwa" 
               style="width:100%; height:100vh; border:none;"
               title="Economizei Rio Claro"
             ></iframe>
