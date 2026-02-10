@@ -221,3 +221,8 @@ self.addEventListener('fetch', event => {
     );
   }
 });
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
+  }
+});
