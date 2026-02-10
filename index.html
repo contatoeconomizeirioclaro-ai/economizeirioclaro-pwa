@@ -3,242 +3,84 @@
 <head>
   <meta charset="UTF-8">
   <title>Economizei Rio Claro</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-
-  <!-- ADICIONADO: Meta tags para permissão de câmera -->
-  <meta name="camera" content="allow">
-  <meta name="camera-permission" content="allow">
-  <meta name="media-capture-permissions" content="camera">
-
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#f4c430">
-  <link rel="stylesheet" href="/splash.css">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  
+  <script>
+    // DETECÇÃO E REDIRECIONAMENTO IMEDIATO
+    (function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isNativeApp = urlParams.get('source') === 'android_native';
+      
+      if (isNativeApp) {
+        // URL FINAL DO SITE PRINCIPAL - SEM IFRAME
+        const finalUrl = new URL('https://www.economizeirioclaro.com.br/');
+        
+        // PARÂMETROS OBRIGATÓRIOS
+        finalUrl.searchParams.set('app', '1');
+        finalUrl.searchParams.set('m', '1');
+        
+        // PARÂMETROS DE OTIMIZAÇÃO APP NATIVO
+        finalUrl.searchParams.set('native_app', 'true');
+        finalUrl.searchParams.set('platform', 'android_native');
+        finalUrl.searchParams.set('app_optimized', 'true');
+        
+        console.log('🔄 Redirecionando app nativo para:', finalUrl.toString());
+        
+        // REDIRECIONAMENTO TOTAL - NÃO USA history.replaceState
+        window.location.href = finalUrl.toString();
+      }
+    })();
+  </script>
+  
   <style>
-    html, body {
+    /* ESTILO APENAS PARA FALLBACK (se JS desabilitado) */
+    body {
       margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #fff;
-    }
-
-    iframe {
-      border: none;
-      width: 100%;
-      height: 100%;
-      display: none;
-      opacity: 0;
-      transition: opacity .3s ease;
-    }
-
-    body.splash-complete iframe {
-      display: block;
-      opacity: 1;
-    }
-
-    /* MODAL PUSH */
-    .push-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.55);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 99999;
-    }
-
-    .push-modal {
-      background: #fff;
-      width: 90%;
-      max-width: 360px;
-      border-radius: 18px;
-      padding: 22px;
+      padding: 20px;
+      background: #f5f5f5;
+      font-family: Arial, sans-serif;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,.25);
-      animation: fadeUp .35s ease;
     }
-
-    .push-actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    .push-actions button {
-      flex: 1;
-      padding: 12px;
-      border-radius: 12px;
-      border: none;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .push-allow { background: #f4c430; }
-    .push-deny  { background: #eee; }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .loading {
+      color: #0055A4;
+      margin-top: 50px;
     }
   </style>
-
-  <!-- OneSignal -->
-  <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
-  <script>
-    window.OneSignal = window.OneSignal || [];
-    OneSignal.push(() => {
-      OneSignal.init({
-        appId: "fb033efd-5769-4c84-b550-0191fa5ff056",
-        notifyButton: { enable: false },
-        allowLocalhostAsSecureOrigin: true
-      });
-    });
-  </script>
 </head>
 
 <body>
-
-<!-- SPLASH -->
-<div id="splash-screen">
-  <div class="splash-container">
-    <img src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/pin.png" width="200">
-    <img src="https://raw.githubusercontent.com/contatoeconomizeirioclaro-ai/economizeirioclaro-pwa/main/assets/logo-texto.png" width="250">
+  <!-- APENAS FALLBACK SE REDIRECIONAMENTO FALHAR -->
+  <div class="loading">
+    <p>Redirecionando para Economizei Rio Claro...</p>
+    <p>Se não redirecionar automaticamente, <a href="https://www.economizeirioclaro.com.br/?app=1&m=1">clique aqui</a>.</p>
   </div>
-</div>
 
-<!-- BLOG -->
-<iframe src="https://app.economizeirioclaro.com.br"></iframe>
-
-<!-- MODAL PUSH -->
-<div class="push-overlay" id="pushOverlay">
-  <div class="push-modal">
-    <h3>Receber notificações?</h3>
-    <p>Ofertas e avisos em tempo real.</p>
-    <div class="push-actions">
-      <button class="push-deny" id="pushNo">Agora não</button>
-      <button class="push-allow" id="pushYes">Ativar</button>
-    </div>
-  </div>
-</div>
-
-<script>
-/* ========= MODAL PUSH ========= */
-document.addEventListener('DOMContentLoaded', () => {
-
-  const isPWA =
-    matchMedia('(display-mode: standalone)').matches ||
-    navigator.standalone === true;
-
-  if (!isPWA) return;
-  if (Notification.permission !== 'default') return;
-  if (localStorage.getItem('push-modal-dismissed')) return;
-
-  setTimeout(() => {
-    document.getElementById('pushOverlay').style.display = 'flex';
-  }, 1500);
-
-  pushNo.onclick = () => {
-    localStorage.setItem('push-modal-dismissed', 'true');
-    pushOverlay.remove();
-  };
-
-  pushYes.onclick = () => {
-    OneSignal.push(() => OneSignal.showNativePrompt());
-    localStorage.setItem('push-modal-dismissed', 'true');
-    pushOverlay.remove();
-  };
-});
-</script>
-
-<script>
-/* ========= GOOGLE SHEETS + AGENDAMENTO ========= */
-
-const SHEETS_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQgRkzdvRw_Qjb_tMexnc49QXEAo4wdBAzA9spA_7PVQReYlH15GaVCTTjIBllU2IKZS0LEr-SBKk7b/pub?output=csv';
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
-}
-
-setTimeout(verificarSheets, 3000);
-
-async function verificarSheets() {
-  try {
-    const csv = await (await fetch(SHEETS_URL + '&t=' + Date.now())).text();
-    const mensagens = csvToJson(csv);
-    mensagens.forEach(msg => {
-      if (podeDisparar(msg)) enviar(msg);
-    });
-  } catch (e) {
-    console.error('Erro Sheets:', e);
-  }
-}
-
-function podeDisparar(msg) {
-  const agora = new Date();
-  const dataHora = new Date(`${msg.data}T${msg.hora || '00:00'}`);
-
-  if (agora < dataHora) return false;
-
-  const enviados = JSON.parse(
-    localStorage.getItem('notificacoes-enviadas') || '[]'
-  );
-
-  if (enviados.includes(msg.id)) return false;
-
-  enviados.push(msg.id);
-  localStorage.setItem(
-    'notificacoes-enviadas',
-    JSON.stringify(enviados)
-  );
-
-  return true;
-}
-
-function enviar(msg) {
-  const pushAtivo =
-    window.OneSignal &&
-    Notification.permission === 'granted';
-
-  if (msg.push && pushAtivo) {
-    OneSignal.push(() => {
-      OneSignal.sendSelfNotification(
-        msg.titulo,
-        msg.mensagem,
-        msg.url
-      );
-    });
-  } else {
-    navigator.serviceWorker.ready.then(reg => {
-      reg.active?.postMessage({
-        type: 'SHOW_NOTIFICATION',
-        title: msg.titulo,
-        body: msg.mensagem,
-        url: msg.url,
-        id: msg.id
-      });
-    });
-  }
-}
-
-function csvToJson(csv) {
-  const linhas = csv.split('\n').slice(1).filter(l => l.trim());
-  return linhas.map(l => {
-    const c = l.split(',');
-    return {
-      id: c[0],
-      titulo: c[1],
-      mensagem: c[2],
-      data: c[3],
-      hora: c[4],
-      url: c[5],
-      push: (c[6] || '').toLowerCase() === 'sim'
-    };
-  });
-}
+  <script>
+    // FALLBACK: se não redirecionou em 3 segundos, faz manualmente
+    setTimeout(function() {
+      if (!window.location.search.includes('source=android_native')) {
+        // Para PWA normal no navegador
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true;
+        
+        if (isStandalone) {
+          // Comportamento PWA normal com iframe
+          document.body.innerHTML = `
+            <iframe 
+              src="https://www.economizeirioclaro.com.br/?app=1" 
+              style="width:100%; height:100vh; border:none;"
+              title="Economizei Rio Claro"
+            ></iframe>
+          `;
+        }
+      }
+    }, 3000);
+  </script>
+</body>
+</html>
 </script>
 
 <script src="/splash.js"></script>
 </body>
 </html>
+
