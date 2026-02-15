@@ -1,54 +1,56 @@
-// splash.js - VERSÃO SEM SPLASH (otimizado)
+// splash-clean.js - Versão sem iframe (genérica)
 (function() {
   'use strict';
 
-  // Função para garantir que o conteúdo principal seja exibido
-  function showMainContent() {
-    // Tenta encontrar o iframe (se for o conteúdo principal)
-    const iframe = document.querySelector('iframe');
-    if (iframe) {
-      // Aplica estilos diretamente para garantir visibilidade
-      iframe.style.display = 'block';
-      iframe.style.visibility = 'visible';
-      iframe.style.opacity = '1';
-    }
-
-    // Alternativa: se o conteúdo principal for outro elemento (ex.: #main-wrapper)
-    // podemos também garantir que ele esteja visível
-    const mainContent = document.getElementById('main-wrapper') || document.querySelector('main');
-    if (mainContent) {
-      mainContent.style.display = 'block'; // ou o valor original
-      // Se houver classes de ocultação, removê-las
-      mainContent.classList.remove('hidden', 'splash-hidden');
-    }
-  }
-
-  // Remove o elemento splash se existir
-  function removeSplash() {
-    const splash = document.getElementById('splash-screen');
-    if (splash && splash.parentNode) {
-      splash.parentNode.removeChild(splash);
-    }
-  }
-
-  // Limpa classes fantasmas no body
-  function cleanBodyClasses() {
-    document.body.classList.remove('splash-active');
-    // Adiciona classe de conclusão se for útil para outros scripts
-    document.body.classList.add('splash-complete');
-  }
-
   // Executa quando o DOM estiver pronto
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      showMainContent();
-      removeSplash();
-      cleanBodyClasses();
-    });
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    // DOM já está carregado
-    showMainContent();
-    removeSplash();
-    cleanBodyClasses();
+    init();
+  }
+
+  function init() {
+    console.log('🔧 Iniciando limpeza de splash...');
+
+    // 1. Remove o elemento splash se existir
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+      splash.style.transition = 'none'; // remove animações
+      splash.style.display = 'none';
+      // Remove do DOM (opcional, mas seguro)
+      setTimeout(() => {
+        if (splash.parentNode) splash.parentNode.removeChild(splash);
+      }, 100);
+      console.log('✅ Splash removida.');
+    } else {
+      console.log('ℹ️ Nenhum elemento splash encontrado.');
+    }
+
+    // 2. Remove classes do body que possam esconder conteúdo
+    document.body.classList.remove('splash-active', 'splash-visible', 'loading');
+    document.body.classList.add('splash-complete');
+
+    // 3. Garante que o conteúdo principal fique visível
+    //    (opcional: força visibilidade em contêineres comuns)
+    const mainContent = document.querySelector('#main-wrapper, #outer-wrapper, main, .main-content, .site-content');
+    if (mainContent) {
+      mainContent.style.visibility = 'visible';
+      mainContent.style.opacity = '1';
+    }
+
+    // 4. Remove qualquer overlay genérico que possa estar bloqueando
+    const overlays = document.querySelectorAll('.overlay, .modal, .popup');
+    overlays.forEach(el => {
+      if (el.id !== 'splash-screen') { // evita remover duas vezes
+        el.style.display = 'none';
+      }
+    });
+
+    // 5. Força reflow em elementos escondidos (para garantir que apareçam)
+    document.body.style.display = 'none';
+    document.body.offsetHeight; // força reflow
+    document.body.style.display = '';
+
+    console.log('✅ Splash limpa. Pronto para exibir conteúdo.');
   }
 })();
