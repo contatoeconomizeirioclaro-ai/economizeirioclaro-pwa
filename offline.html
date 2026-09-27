@@ -1,72 +1,307 @@
-// Service Worker – Economizei (Offline seguro)
-
-const CACHE_NAME = "economizei-offline-v4";
-const OFFLINE_FALLBACK_PAGE = "/offline.html";
-const ALLOWED_ORIGIN = self.location.origin;
-
-importScripts("https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js");
-
-// Força atualização do SW
-self.addEventListener("message", event => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
-});
-
-// Instala e cacheia apenas a página offline
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.add(OFFLINE_FALLBACK_PAGE))
-  );
-  self.skipWaiting();
-});
-
-// Ativa e limpa caches antigos
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    )
-  );
-  self.clients.claim();
-});
-
-// Performance (opcional, seguro)
-if (workbox.navigationPreload.isSupported()) {
-  workbox.navigationPreload.enable();
-}
-
-// ❌ NÃO registrar rota global com Workbox
-// Isso causa conflitos em Cloudflare Pages
-
-// Fetch controlado: somente navegação e somente no próprio domínio
-self.addEventListener("fetch", event => {
-  const request = event.request;
-  const url = new URL(request.url);
-
-  // Nunca interceptar outros domínios
-  if (url.origin !== ALLOWED_ORIGIN) {
-    return;
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Você está offline — Economizei Rio Claro</title>
+<style>
+  :root {
+    --azul: #1a3463;
+    --amarelo: #f4c430;
+    --amarelo2: #e2aa22;
+    --cinza: #6b7280;
+    --bg: #ffffff;
   }
 
-  if (request.mode === "navigate") {
-    event.respondWith(
-      (async () => {
-        try {
-          const preloadResp = await event.preloadResponse;
-          if (preloadResp) return preloadResp;
+  * { box-sizing: border-box; }
 
-          return await fetch(request);
-        } catch (err) {
-          const cache = await caches.open(CACHE_NAME);
-          return await cache.match(OFFLINE_FALLBACK_PAGE);
-        }
-      })()
-    );
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--azul);
+    overflow: hidden;
   }
-});
 
+  .wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .selo {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--amarelo);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 16px rgba(244,196,48,.35);
+  }
+
+  h1 {
+    font-size: 19px;
+    margin: 0 0 4px;
+  }
+
+  p.sub {
+    margin: 0 0 18px;
+    color: var(--cinza);
+    font-size: 14px;
+  }
+
+  #status {
+    font-size: 12px;
+    font-weight: 600;
+    color: #c0392b;
+    margin-bottom: 4px;
+  }
+
+  #status.online {
+    color: #1a8f4c;
+  }
+
+  .dica {
+    font-size: 12px;
+    color: var(--cinza);
+    margin-top: 4px;
+  }
+
+  canvas {
+    background: #fbfbfb;
+    border: 1px solid #ececec;
+    border-radius: 10px;
+    margin-top: 14px;
+    touch-action: none;
+  }
+
+  .score {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: var(--azul);
+    font-weight: 700;
+    margin-top: 10px;
+    letter-spacing: .02em;
+  }
+
+  .score span.melhor { color: var(--amarelo2); }
+
+  button#btnRetry {
+    margin-top: 18px;
+    background: var(--azul);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  button#btnRetry:active { transform: scale(.97); }
+
+  .rodape {
+    position: fixed;
+    bottom: 14px;
+    font-size: 11px;
+    color: #b9bec9;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="selo">🛍️</div>
+  <h1>Você está offline</h1>
+  <p class="sub">Assim que a conexão voltar, a página recarrega sozinha.</p>
+  <div id="status">● Sem conexão</div>
+
+  <canvas id="jogo" width="320" height="140"></canvas>
+  <div class="score">
+    <span>PONTOS: <span id="pontos">0</span></span>
+    <span class="melhor">RECORDE: <span id="recorde">0</span></span>
+  </div>
+  <div class="dica" id="dica">Toque na tela ou aperte ESPAÇO para pular</div>
+
+  <button id="btnRetry">Tentar novamente</button>
+  <div class="rodape">Economizei! Rio Claro</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ===== Reconexão automática ===== */
+  const statusEl = document.getElementById('status');
+
+  function atualizarStatus() {
+    if (navigator.onLine) {
+      statusEl.textContent = '● Conectado — recarregando…';
+      statusEl.classList.add('online');
+      setTimeout(() => location.reload(), 600);
+    } else {
+      statusEl.textContent = '● Sem conexão';
+      statusEl.classList.remove('online');
+    }
+  }
+
+  window.addEventListener('online', atualizarStatus);
+  window.addEventListener('offline', atualizarStatus);
+  atualizarStatus();
+
+  document.getElementById('btnRetry').onclick = () => location.reload();
+
+  /* ===== Mini-jogo (estilo "dino") ===== */
+  const canvas = document.getElementById('jogo');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const CHAO = H - 24;
+
+  const pontosEl = document.getElementById('pontos');
+  const recordeEl = document.getElementById('recorde');
+  const dicaEl = document.getElementById('dica');
+
+  let recorde = 0;
+  try { recorde = parseInt(localStorage.getItem('economizei-offline-recorde') || '0', 10) || 0; } catch (e) {}
+  recordeEl.textContent = recorde;
+
+  const player = {
+    x: 26, y: CHAO - 22, w: 22, h: 22,
+    vy: 0, pulando: false
+  };
+
+  const GRAVIDADE = 0.9;
+  const FORCA_PULO = -12;
+
+  let obstaculos = [];
+  let velocidade = 4.2;
+  let pontos = 0;
+  let vivo = false;
+  let ultimoObstaculo = 0;
+  let raf = null;
+
+  function reset() {
+    player.y = CHAO - player.h;
+    player.vy = 0;
+    player.pulando = false;
+    obstaculos = [];
+    velocidade = 4.2;
+    pontos = 0;
+    ultimoObstaculo = 0;
+    vivo = true;
+    dicaEl.style.visibility = 'hidden';
+  }
+
+  function pular() {
+    if (!vivo) { reset(); loop(); return; }
+    if (!player.pulando) {
+      player.vy = FORCA_PULO;
+      player.pulando = true;
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); pular(); }
+  });
+  canvas.addEventListener('pointerdown', pular);
+  document.querySelector('.wrap').addEventListener('pointerdown', function (e) {
+    if (e.target === canvas) return;
+    if (!vivo) pular();
+  });
+
+  function desenharChao() {
+    ctx.strokeStyle = '#d8dbe0';
+    ctx.beginPath();
+    ctx.moveTo(0, CHAO);
+    ctx.lineTo(W, CHAO);
+    ctx.stroke();
+  }
+
+  function desenharJogador() {
+    ctx.font = '22px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText('🛍️', player.x, player.y - 2);
+  }
+
+  function desenharObstaculo(o) {
+    ctx.font = '20px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText('🧾', o.x, CHAO - 20);
+  }
+
+  function colide(o) {
+    const px = player.x + 3, pw = player.w - 8, py = player.y + 3, ph = player.h - 6;
+    const ox = o.x + 3, ow = 14, oy = CHAO - 20 + 3, oh = 17;
+    return px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy;
+  }
+
+  function fimDeJogo() {
+    vivo = false;
+    if (pontos > recorde) {
+      recorde = pontos;
+      try { localStorage.setItem('economizei-offline-recorde', String(recorde)); } catch (e) {}
+      recordeEl.textContent = recorde;
+    }
+    dicaEl.textContent = 'Fim de jogo — toque para tentar de novo';
+    dicaEl.style.visibility = 'visible';
+    cancelAnimationFrame(raf);
+  }
+
+  let frame = 0;
+  function loop() {
+    frame++;
+    ctx.clearRect(0, 0, W, H);
+    desenharChao();
+
+    player.vy += GRAVIDADE;
+    player.y += player.vy;
+    if (player.y >= CHAO - player.h) {
+      player.y = CHAO - player.h;
+      player.vy = 0;
+      player.pulando = false;
+    }
+
+    if (frame - ultimoObstaculo > Math.max(50, 90 - velocidade * 6)) {
+      obstaculos.push({ x: W + 10 });
+      ultimoObstaculo = frame;
+    }
+
+    obstaculos.forEach(o => (o.x -= velocidade));
+    obstaculos = obstaculos.filter(o => o.x > -20);
+
+    for (const o of obstaculos) {
+      desenharObstaculo(o);
+      if (colide(o)) { fimDeJogo(); }
+    }
+
+    desenharJogador();
+
+    if (vivo) {
+      pontos += 1;
+      pontosEl.textContent = Math.floor(pontos / 5);
+      velocidade = Math.min(9, 4.2 + Math.floor(pontos / 5) * 0.08);
+      raf = requestAnimationFrame(loop);
+    }
+  }
+
+  reset();
+  vivo = false;
+  desenharChao();
+  desenharJogador();
+  ctx.font = '20px sans-serif';
+})();
+</script>
+
+</body>
+</html>
