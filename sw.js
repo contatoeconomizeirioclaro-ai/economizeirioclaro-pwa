@@ -2,7 +2,7 @@
 // SERVICE WORKER UNIFICADO - ECONOMIZEI
 // ============================================
 
-const CACHE_NAME = 'economizei-offline-v5'; // Mude para v5
+const CACHE_NAME = 'economizei-offline-v6'; // incrementar a cada mudança no offline.html
 const OFFLINE_URL = '/offline.html';
 const ALLOWED_ORIGIN = self.location.origin;
 
@@ -11,7 +11,7 @@ const ALLOWED_ORIGIN = self.location.origin;
 // ============================================
 
 self.addEventListener('install', event => {
-  console.log('✅ Service Worker instalando (v5)...');
+  console.log('✅ Service Worker instalando (v6)...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.add(OFFLINE_URL))
@@ -34,7 +34,7 @@ self.addEventListener('install', event => {
 // ============================================
 
 self.addEventListener('activate', event => {
-  console.log('✅ Service Worker ativando (v5)...');
+  console.log('✅ Service Worker ativando (v6)...');
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
@@ -216,11 +216,6 @@ self.addEventListener('fetch', event => {
         permissions: ['camera', 'video-capture'],
         timestamp: Date.now()
       }), {
-        headers: { 'Content-Type': 'application/json' }
-      })
-    );
-  }
-});
         headers: { 'Content-Type': 'application/json' }
       })
     );
