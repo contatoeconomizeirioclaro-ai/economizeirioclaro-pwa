@@ -145,22 +145,37 @@
   /* ===== Reconexão automática ===== */
   const statusEl = document.getElementById('status');
 
-  function atualizarStatus() {
-    if (navigator.onLine) {
-      statusEl.textContent = '● Conectado — recarregando…';
-      statusEl.classList.add('online');
-      setTimeout(() => location.reload(), 600);
-    } else {
-      statusEl.textContent = '● Sem conexão';
-      statusEl.classList.remove('online');
-    }
+  // Se estiver dentro do shell (overlay), recarrega o shell inteiro; senão, esta página.
+  function recarregar() {
+    (window.parent !== window ? window.parent : window).location.reload();
   }
 
-  window.addEventListener('online', atualizarStatus);
-  window.addEventListener('offline', atualizarStatus);
-  atualizarStatus();
+  // navigator.onLine engana (Wi-Fi sem internet marca "online"), então testa de verdade.
+  async function testarConexao() {
+    try {
+      const r = await fetch('/manifest.json?_=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) {
+        statusEl.textContent = '● Conectado — recarregando…';
+        statusEl.classList.add('online');
+        setTimeout(recarregar, 500);
+        return;
+      }
+    } catch (e) {}
+    statusEl.textContent = '● Sem conexão';
+    statusEl.classList.remove('online');
+  }
 
-  document.getElementById('btnRetry').onclick = () => location.reload();
+  window.addEventListener('online', testarConexao);
+  setInterval(testarConexao, 5000);
+
+  document.getElementById('btnRetry').onclick = () => {
+    statusEl.textContent = '● Verificando…';
+    testarConexao().then(() => {
+      if (!statusEl.classList.contains('online')) {
+        setTimeout(() => { statusEl.textContent = '● Sem conexão'; }, 800);
+      }
+    });
+  };
 
   /* ===== Mini-jogo (estilo "dino") ===== */
   const canvas = document.getElementById('jogo');
