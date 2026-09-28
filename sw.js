@@ -2,7 +2,7 @@
 // SERVICE WORKER UNIFICADO - ECONOMIZEI
 // ============================================
 
-const CACHE_NAME = 'economizei-offline-v7'; // incrementar a cada mudança no offline.html
+const CACHE_NAME = 'economizei-offline-v8'; // incrementar a cada mudança no offline.html
 const OFFLINE_URL = '/offline.html';
 const ALLOWED_ORIGIN = self.location.origin;
 
@@ -34,7 +34,7 @@ const OFFLINE_FALLBACK_HTML = '<!DOCTYPE html><html lang="pt-BR"><head><meta cha
 // ============================================
 
 self.addEventListener('install', event => {
-  console.log('✅ Service Worker instalando (v7)...');
+  console.log('✅ Service Worker instalando (v8)...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cacheOfflinePage(cache))
@@ -57,7 +57,7 @@ self.addEventListener('install', event => {
 // ============================================
 
 self.addEventListener('activate', event => {
-  console.log('✅ Service Worker ativando (v7)...');
+  console.log('✅ Service Worker ativando (v8)...');
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
