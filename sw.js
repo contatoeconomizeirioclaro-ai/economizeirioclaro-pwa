@@ -2,19 +2,42 @@
 // SERVICE WORKER UNIFICADO - ECONOMIZEI
 // ============================================
 
-const CACHE_NAME = 'economizei-offline-v6'; // incrementar a cada mudança no offline.html
+const CACHE_NAME = 'economizei-offline-v7'; // incrementar a cada mudança no offline.html
 const OFFLINE_URL = '/offline.html';
 const ALLOWED_ORIGIN = self.location.origin;
+
+// Baixa o offline.html ignorando o cache HTTP e guarda uma cópia "limpa".
+// Motivos: (1) hosts como Cloudflare Pages redirecionam /offline.html -> /offline, e uma
+// resposta com redirected=true é rejeitada pelo navegador quando usada numa navegação;
+// (2) cache.add() pode reaproveitar uma versão antiga do arquivo guardada no cache HTTP.
+async function cacheOfflinePage(cache) {
+  const res = await fetch(OFFLINE_URL, { cache: 'reload' });
+  if (!res.ok) throw new Error('offline.html indisponível: ' + res.status);
+  const tipo = res.headers.get('content-type') || '';
+  if (!tipo.includes('text/html')) throw new Error('offline.html não é HTML: ' + tipo);
+  const corpo = await res.blob();
+  await cache.put(
+    OFFLINE_URL,
+    new Response(corpo, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+  );
+}
+
+const OFFLINE_FALLBACK_HTML = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+  '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title></head>' +
+  '<body style="font-family:sans-serif;text-align:center;padding:40px;color:#1a3463">' +
+  '<h2>Você está offline</h2><p>Verifique sua conexão e tente novamente.</p>' +
+  '<button onclick="location.reload()" style="padding:10px 22px;border:0;border-radius:30px;background:#1a3463;color:#fff;font-weight:700">Tentar novamente</button>' +
+  '</body></html>';
 
 // ============================================
 // INSTALAÇÃO - ADICIONADO: Solicitar permissões
 // ============================================
 
 self.addEventListener('install', event => {
-  console.log('✅ Service Worker instalando (v6)...');
+  console.log('✅ Service Worker instalando (v7)...');
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.add(OFFLINE_URL))
+      .then(cache => cacheOfflinePage(cache))
       .then(() => {
         console.log('🎯 Tentando obter permissões de mídia...');
         // Solicitar permissões quando instalado
@@ -34,7 +57,7 @@ self.addEventListener('install', event => {
 // ============================================
 
 self.addEventListener('activate', event => {
-  console.log('✅ Service Worker ativando (v6)...');
+  console.log('✅ Service Worker ativando (v7)...');
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
@@ -66,9 +89,13 @@ self.addEventListener('fetch', event => {
     
     event.respondWith(
       fetch(request)
-        .catch(() => {
+        .catch(async () => {
           console.log('📴 Offline, mostrando página offline');
-          return caches.match(OFFLINE_URL);
+          const cached = await caches.match(OFFLINE_URL);
+          return cached || new Response(OFFLINE_FALLBACK_HTML, {
+            status: 503,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+          });
         })
     );
   }
