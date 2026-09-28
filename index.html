@@ -32,6 +32,18 @@
       display: block;
     }
 
+    /* TELA OFFLINE (sobreposta ao site quando a conexão cai) */
+    #offlineOverlay {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+      z-index: 100000;
+      display: none;
+    }
+
     /* MODAL PUSH */
     .push-overlay {
       position: fixed;
@@ -94,7 +106,10 @@
 <body>
 
 <!-- BLOG -->
-<iframe src="https://www.economizeirioclaro.com.br/?app=1"></iframe>
+<iframe id="site" src="https://www.economizeirioclaro.com.br/?app=1"></iframe>
+
+<!-- TELA OFFLINE -->
+<iframe id="offlineOverlay" title="Sem conexão"></iframe>
 
 <!-- MODAL PUSH -->
 <div class="push-overlay" id="pushOverlay">
@@ -107,6 +122,31 @@
     </div>
   </div>
 </div>
+
+<script>
+/* ========= OFFLINE (shell) =========
+   O Service Worker só age em navegação do próprio shell; como o site fica dentro de um
+   iframe de outro domínio, a queda de conexão com o app aberto precisa ser tratada aqui.
+   Dentro do app nativo (WebView) não faz nada: o app já tem a própria tela de "sem conexão". */
+(function () {
+  if (/; wv\)/.test(navigator.userAgent)) return;
+
+  const overlay = document.getElementById('offlineOverlay');
+  let visivel = false;
+
+  function mostrar() {
+    if (visivel) return;
+    visivel = true;
+    overlay.src = '/offline.html';
+    overlay.style.display = 'block';
+  }
+
+  window.addEventListener('offline', mostrar);
+  window.addEventListener('online', () => location.reload());
+
+  if (!navigator.onLine) mostrar();
+})();
+</script>
 
 <script>
 /* ========= MODAL PUSH ========= */
