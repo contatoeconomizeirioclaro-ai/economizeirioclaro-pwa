@@ -127,10 +127,10 @@
 /* ========= OFFLINE (shell) =========
    O Service Worker só age em navegação do próprio shell; como o site fica dentro de um
    iframe de outro domínio, a queda de conexão com o app aberto precisa ser tratada aqui.
-   Dentro do app nativo (WebView) não faz nada: o app já tem a própria tela de "sem conexão". */
+   Roda também dentro do app nativo (WebView): a LoadingManager nativa só cobre a tela
+   durante o carregamento de uma página nova, então essa tela offline (com o joguinho)
+   é quem trata a queda de conexão no meio do uso. */
 (function () {
-  if (/; wv\)/.test(navigator.userAgent)) return;
-
   const overlay = document.getElementById('offlineOverlay');
   let visivel = false;
 
