@@ -157,6 +157,7 @@
       if (r.ok) {
         statusEl.textContent = '● Conectado — recarregando…';
         statusEl.classList.add('online');
+        clearInterval(timer);
         setTimeout(recarregar, 500);
         return;
       }
@@ -166,7 +167,7 @@
   }
 
   window.addEventListener('online', testarConexao);
-  setInterval(testarConexao, 5000);
+  var timer = setInterval(testarConexao, 5000);
 
   document.getElementById('btnRetry').onclick = () => {
     statusEl.textContent = '● Verificando…';
