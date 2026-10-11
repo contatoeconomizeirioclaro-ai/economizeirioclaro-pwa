@@ -3,7 +3,7 @@
 // Push e notificações são nativos no app (FCM), não passam por aqui.
 // ============================================
 
-const CACHE_NAME = 'economizei-offline-v9'; // incrementar a cada mudança no offline.html
+const CACHE_NAME = 'economizei-offline-v10'; // incrementar a cada mudança no offline.html
 const OFFLINE_URL = '/offline.html';
 const ALLOWED_ORIGIN = self.location.origin;
 
