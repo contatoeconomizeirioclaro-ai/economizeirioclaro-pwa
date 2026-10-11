@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Economizei Rio Claro</title>
+  <meta name="robots" content="noindex, follow">
+  <link rel="canonical" href="https://www.economizeirioclaro.com.br/">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4c430">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    /* Splash removida daqui: fica por conta do WebView nativo (SplashActivity).
+       O iframe já nasce visível — sem dependência de CSS/JS externo pra revelar a página. */
+    iframe {
+      border: none;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* TELA OFFLINE (sobreposta ao site quando a conexão cai) */
+    #offlineOverlay {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+      z-index: 100000;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- BLOG -->
+<iframe id="site" src="https://www.economizeirioclaro.com.br/?app=1"></iframe>
+
+<!-- TELA OFFLINE -->
+<iframe id="offlineOverlay" title="Sem conexão"></iframe>
+
+<script>
+/* ========= OFFLINE (shell) =========
+   O Service Worker só age em navegação do próprio shell; como o site fica dentro de um
+   iframe de outro domínio, a queda de conexão com o app aberto precisa ser tratada aqui.
+   Roda também dentro do app nativo (WebView): a LoadingManager nativa só cobre a tela
+   durante o carregamento de uma página nova, então essa tela offline (com o joguinho)
+   é quem trata a queda de conexão no meio do uso. */
+(function () {
+  const overlay = document.getElementById('offlineOverlay');
+  let visivel = false;
+
+  function mostrar() {
+    if (visivel) return;
+    visivel = true;
+    overlay.src = '/offline.html';
+    overlay.style.display = 'block';
+  }
+
+  window.addEventListener('offline', mostrar);
+  window.addEventListener('online', () => location.reload());
+
+  if (!navigator.onLine) mostrar();
+})();
+</script>
+
+<script>
+/* Service Worker: usado só para servir o /offline.html quando a conexão cai. */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+
+</body>
+</html>
